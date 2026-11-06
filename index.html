@@ -551,10 +551,6 @@
                     <input id="s-rotate" type="checkbox" class="mt-0.5 w-4 h-4 text-indigo-600 rounded border-slate-300">
                     <span>요청마다 키를 돌아가며 사용 <span class="text-soft-subtext">(무료 한도를 여러 키에 고르게 분산. 끄면 항상 1번 키부터 시도)</span></span>
                 </label>
-                <label class="flex items-start gap-2 text-xs text-soft-text cursor-pointer">
-                    <input id="s-remember" type="checkbox" class="mt-0.5 w-4 h-4 text-indigo-600 rounded border-slate-300">
-                    <span>이 브라우저에 API 키 저장 <span class="text-soft-subtext">(개인 PC에서만 권장. 해제하면 탭을 닫을 때 지워집니다)</span></span>
-                </label>
             </div>
 
             <button id="btnSaveSettings" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold">
@@ -655,7 +651,7 @@ const state = {
     result: null,      // AI 구조화 결과(JSON)
     fullEdited: false,
     busy: false,
-    settings: { provider: 'gemini', model: PROVIDERS.gemini.defaultModel, lang: 'ko', examples: 2, remember: false, rotate: false },
+    settings: { provider: 'gemini', model: PROVIDERS.gemini.defaultModel, lang: 'ko', examples: 2, remember: true, rotate: false },
     keys: [],          // [{id, provider, key, model, label, enabled, status, cooldownUntil, lastError}]
     rrIndex: 0,
     lastUsedKey: null
@@ -913,8 +909,8 @@ function maskKey(key) { return key.length > 10 ? key.slice(0, 4) + '…' + key.s
 
 function saveKeys() {
     const data = JSON.stringify(state.keys);
-    if (state.settings.remember) { safeLS.set(LS.keys, data); safeSS.del(LS.keys); }
-    else { safeSS.set(LS.keys, data); safeLS.del(LS.keys); }
+    safeLS.set(LS.keys, data);      // API 키는 항상 이 브라우저(localStorage)에 저장
+    safeSS.set(LS.keys, data);      // localStorage가 막힌 환경 대비 예비 저장
     updateApiBadge();
 }
 function loadKeys() {
@@ -1641,7 +1637,6 @@ function openSettings() {
     if (!$('s-model').value) $('s-model').value = PROVIDERS[draftProvider].defaultModel;
     $('s-lang').value = s.lang;
     $('s-examples').value = String(s.examples);
-    $('s-remember').checked = !!s.remember;
     $('s-rotate').checked = !!s.rotate;
     $('s-fallback').checked = s.modelFallback !== false;
     renderKeyList();
@@ -1668,7 +1663,7 @@ $('btnSaveSettings').onclick = () => {
     state.settings.examples = Number($('s-examples').value);
     state.settings.rotate = $('s-rotate').checked;
     state.settings.modelFallback = $('s-fallback').checked;
-    state.settings.remember = $('s-remember').checked;
+    state.settings.remember = true;
     safeLS.set(LS.settings, JSON.stringify(state.settings));
     saveKeys();
     closeModal('settingsModal');
