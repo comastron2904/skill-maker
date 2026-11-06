@@ -254,6 +254,15 @@
                                 </select>
                             </div>
                         </div>
+
+                        <div class="pt-2 space-y-2">
+                            <label class="flex items-center p-3 bg-white border border-soft-border rounded-xl cursor-pointer hover:border-indigo-200 transition">
+                                <input id="f-files" type="checkbox" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-400">
+                                <span class="ml-2.5 text-xs font-medium text-soft-text"><i class="fa-solid fa-paperclip mr-1 text-indigo-400"></i>참고 파일 추가 <span class="text-soft-subtext font-normal">(지식 파일을 첨부해 두고 쓸 예정)</span></span>
+                            </label>
+                            <input id="f-filedesc" type="text" placeholder="어떤 파일인가요? (예: 학교 규정집 PDF, 평가 기준표)"
+                                class="hidden w-full bg-white border border-soft-border focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 rounded-xl px-4 py-2.5 text-xs transition outline-none shadow-soft-inner">
+                        </div>
                     </div>
                 </div>
 
@@ -362,7 +371,7 @@
                             <i class="chev fa-solid fa-chevron-down text-slate-300 text-xs"></i>
                         </div>
                         <div class="card-body text-xs text-slate-400 italic font-mono bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
-                            자동 생성 버튼을 누르면 추천 Few-shot 예시가 이곳에 채워집니다.
+                            자동 생성 버튼을 누르면 Few-shot 예시가 이곳에 채워집니다.
                         </div>
                     </div>
                 </div>
@@ -393,55 +402,6 @@
                 </div>
             </section>
         </main>
-
-        <!-- TEMPLATES -->
-        <footer class="glass-panel rounded-2xl p-5 border border-white/60 shadow-soft-sm space-y-3">
-            <div class="flex items-center justify-between">
-                <h3 class="text-xs font-bold uppercase tracking-wider text-soft-subtext flex items-center gap-1.5">
-                    <i class="fa-solid fa-cubes text-purple-500"></i> 추천 Gem & Skill 템플릿 프레임
-                </h3>
-                <span class="text-xs text-slate-400">클릭하여 양식 불러오기</span>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div data-preset="0" class="preset bg-white border border-soft-border p-3.5 rounded-2xl hover:border-indigo-300 hover:shadow-soft-md transition cursor-pointer flex items-start gap-3 group">
-                    <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition">
-                        <i class="fa-solid fa-pen-nib text-sm"></i>
-                    </div>
-                    <div>
-                        <h4 class="text-xs font-bold text-soft-text">자기소개서 교정 Gem</h4>
-                        <p class="text-[11px] text-soft-subtext mt-0.5 line-clamp-1">문맥 교정 및 호감도 높은 어조로 다듬기</p>
-                    </div>
-                </div>
-                <div data-preset="1" class="preset bg-white border border-soft-border p-3.5 rounded-2xl hover:border-indigo-300 hover:shadow-soft-md transition cursor-pointer flex items-start gap-3 group">
-                    <div class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 group-hover:bg-purple-600 group-hover:text-white transition">
-                        <i class="fa-solid fa-code text-sm"></i>
-                    </div>
-                    <div>
-                        <h4 class="text-xs font-bold text-soft-text">코드 리뷰어 Skill</h4>
-                        <p class="text-[11px] text-soft-subtext mt-0.5 line-clamp-1">클린 코드 규칙 및 보안 취약점 점검</p>
-                    </div>
-                </div>
-                <div data-preset="2" class="preset bg-white border border-soft-border p-3.5 rounded-2xl hover:border-indigo-300 hover:shadow-soft-md transition cursor-pointer flex items-start gap-3 group">
-                    <div class="w-9 h-9 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center shrink-0 group-hover:bg-pink-600 group-hover:text-white transition">
-                        <i class="fa-solid fa-chart-pie text-sm"></i>
-                    </div>
-                    <div>
-                        <h4 class="text-xs font-bold text-soft-text">데이터 요약 어시스턴트</h4>
-                        <p class="text-[11px] text-soft-subtext mt-0.5 line-clamp-1">긴 보고서나 표 데이터를 핵심으로 요약</p>
-                    </div>
-                </div>
-                <div data-preset="3" class="preset bg-white border border-soft-border p-3.5 rounded-2xl hover:border-indigo-300 hover:shadow-soft-md transition cursor-pointer flex items-start gap-3 group">
-                    <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 group-hover:bg-amber-600 group-hover:text-white transition">
-                        <i class="fa-solid fa-lightbulb text-sm"></i>
-                    </div>
-                    <div>
-                        <h4 class="text-xs font-bold text-soft-text">아이디어 브레인스토밍</h4>
-                        <p class="text-[11px] text-soft-subtext mt-0.5 line-clamp-1">창의적인 기획안과 다각도 아이디어 도출</p>
-                    </div>
-                </div>
-            </div>
-        </footer>
     </div>
 
     <!-- API SETTINGS MODAL -->
@@ -630,21 +590,6 @@ const STRICT = {
     flexible: { text: '최소한의 제약만 두고 창의성과 유연성을 우선한다', temp: 1.0 }
 };
 
-const PRESETS = [
-    { type: 'gem', name: '자기소개서 교정 Gem', target: '취업 준비생, 이직 준비자',
-      purpose: '사용자가 붙여넣은 자기소개서의 맞춤법·문맥·논리 흐름을 교정하고, 지원 직무에 맞게 호감도 높은 어조로 다듬어 준다. 원문의 경험과 사실은 바꾸지 않는다.',
-      extra: '수정 전/후 비교와 수정 이유를 함께 제시', rules: ['friendly', 'stepwise', 'markdown'], format: 'summary', strict: 'normal' },
-    { type: 'skill', name: '코드 리뷰어 Skill', target: '개발자, 코드 리뷰어',
-      purpose: '제출된 코드 변경사항을 클린 코드 원칙(가독성, 단일 책임, 네이밍)과 보안 취약점(입력 검증, 인젝션, 비밀정보 노출) 관점에서 점검하고 심각도별로 리뷰 코멘트를 작성한다.',
-      extra: '심각도는 Critical / Major / Minor / Nit 4단계', rules: ['stepwise', 'markdown'], format: 'code', strict: 'strict' },
-    { type: 'gem', name: '데이터 요약 어시스턴트', target: '기획자, 경영진, 마케팅 담당자',
-      purpose: '긴 보고서나 표 데이터를 받아 핵심 수치, 추세, 이상치, 시사점을 짧게 요약한다. 원본에 없는 수치는 만들지 않는다.',
-      extra: '맨 위에 3줄 요약(TL;DR)', rules: ['friendly', 'stepwise', 'jargon', 'markdown'], format: 'summary', strict: 'normal' },
-    { type: 'workflow', name: '아이디어 브레인스토밍', target: '스타트업 창업자, 콘텐츠 기획자',
-      purpose: '주제를 받아 문제 정의 → 다각도 아이디어 발산 → 평가·선별 → 실행 기획안 정리 순으로 함께 아이디어를 발전시킨다.',
-      extra: '각 단계 끝에 사용자 의견을 묻고 진행', rules: ['friendly', 'markdown'], format: 'chat', strict: 'flexible' }
-];
-
 const state = {
     type: 'gem',
     view: 'structured',
@@ -718,7 +663,9 @@ function getForm() {
         extra: $('f-extra').value.trim(),
         rules: [...document.querySelectorAll('.rule-cb')].filter(c => c.checked).map(c => c.dataset.rule),
         format: $('f-format').value,
-        strict: $('f-strict').value
+        strict: $('f-strict').value,
+        files: $('f-files').checked,
+        fileDesc: $('f-filedesc').value.trim()
     };
 }
 
@@ -732,9 +679,13 @@ function setForm(f) {
     document.querySelectorAll('.rule-cb').forEach(c => c.checked = (f.rules || []).includes(c.dataset.rule));
     $('f-format').value = f.format || 'summary';
     $('f-strict').value = f.strict || 'normal';
+    $('f-files').checked = !!f.files;
+    $('f-filedesc').value = f.fileDesc || '';
+    syncFileDesc();
     saveDraft();
 }
 
+function syncFileDesc() { $('f-filedesc').classList.toggle('hidden', !$('f-files').checked); }
 function saveDraft() { safeLS.set(LS.draft, JSON.stringify({ form: getForm(), result: state.result })); }
 
 function setStatus(text, kind = 'ready') {
@@ -802,7 +753,10 @@ examples는 정확히 ${nEx}개.`;
 [추가 요구사항] ${form.extra || '(없음)'}
 [톤앤매너/세부 규칙] ${form.rules.length ? form.rules.map(r => RULES[r]).join(' / ') : '(지정 없음)'}
 [출력 형식] ${FORMATS[form.format]}
-[제약 엄격도] ${STRICT[form.strict].text}`;
+[제약 엄격도] ${STRICT[form.strict].text}
+[참고 파일] ${form.files
+        ? `있음${form.fileDesc ? ' — ' + form.fileDesc : ''}. 사용자가 이 Gem/Skill에 지식 파일을 첨부해 둔다. 지침(principles/workflow/constraints)에 파일 활용 규칙을 반드시 포함하라: 첨부 파일을 1순위 근거로 삼고, 파일에 없는 내용은 추측하지 말고 "파일에 없음"을 밝히며, 근거가 된 파일명을 함께 언급한다.`
+        : '없음 — 파일 참조 관련 규칙은 넣지 않는다.'}`;
     return { system, user };
 }
 
@@ -1764,7 +1718,7 @@ $('fullText').addEventListener('input', () => {
 
 $('btnReset').onclick = () => {
     if ((getForm().name || state.result) && !confirm('입력한 내용과 생성된 지침을 모두 초기화할까요?')) return;
-    setForm({ type: 'gem', rules: ['friendly', 'stepwise', 'markdown'], format: 'summary', strict: 'normal' });
+    setForm({ type: 'gem', rules: ['friendly', 'stepwise', 'markdown'], format: 'summary', strict: 'normal', files: false });
     state.result = null; state.fullEdited = false;
     $('fullText').value = '';
     $('previewBody').innerHTML = INITIAL_PREVIEW;
@@ -1776,18 +1730,8 @@ $('btnReset').onclick = () => {
     saveDraft();
 };
 
-document.querySelectorAll('.preset').forEach(el => el.onclick = () => {
-    const p = PRESETS[Number(el.dataset.preset)];
-    if (state.result && !confirm('현재 생성된 지침은 사라집니다. 템플릿 양식을 불러올까요?')) return;
-    state.result = null; state.fullEdited = false; $('fullText').value = '';
-    $('previewBody').innerHTML = INITIAL_PREVIEW; $('refineBar').classList.add('hidden');
-    setForm(p);
-    setStatus(`"${p.name}" 양식을 불러왔어요 — 생성 버튼을 눌러 주세요`);
-    updateTokens();
-    toast(`"${p.name}" 양식을 불러왔어요`);
-});
-
-['f-name', 'f-target', 'f-purpose', 'f-extra', 'f-format', 'f-strict'].forEach(id => $(id).addEventListener('change', saveDraft));
+['f-name', 'f-target', 'f-purpose', 'f-extra', 'f-format', 'f-strict', 'f-files', 'f-filedesc'].forEach(id => $(id).addEventListener('change', saveDraft));
+$('f-files').addEventListener('change', () => { syncFileDesc(); if ($('f-files').checked) $('f-filedesc').focus(); });
 document.querySelectorAll('.rule-cb').forEach(c => c.addEventListener('change', saveDraft));
 
 /* =========================================================
