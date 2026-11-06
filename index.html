@@ -1472,7 +1472,7 @@ function paintProvider(p) {
         ? ' · 무료 한도는 키가 아니라 Google Cloud 프로젝트 단위로 적용되니, 서로 다른 프로젝트에서 만든 키를 넣어야 전환 효과가 있어요.'
         : ' · 키는 이 브라우저에서 해당 AI 서버로만 직접 전송됩니다.');
     $('modelList').innerHTML = PROVIDERS[p].models.map(m => `<option value="${m}">`).join('');
-    $('btnListModels').classList.toggle('hidden', p !== 'gemini');
+    $('btnListModels').classList.remove('hidden');
     document.querySelectorAll('.key-site').forEach(a => {
         const on = a.dataset.site === p;
         a.classList.toggle('border-indigo-400', on);
@@ -1680,23 +1680,57 @@ $('toggleKey').onclick = () => {
     $('toggleKey').innerHTML = `<i class="fa-regular ${hidden ? 'fa-eye-slash' : 'fa-eye'}"></i>`;
 };
 
-$('btnListModels').onclick = async () => {
-    const key = $('s-key').value.split(/[\s,;]+/).find(x => x.length > 8) || state.keys.find(k => k.provider === 'gemini')?.key;
-    if (!key) { toast('Gemini 키를 입력하거나 먼저 등록해 주세요.', true); return; }
-    try {
+async function fetchModelNames(provider, key) {
+    if (provider === 'gemini') {
         const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': key } });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
-        const names = (data.models || [])
+        return (data.models || [])
             .filter(m => (m.supportedGenerationMethods || []).includes('generateContent') && /gemini/.test(m.name) && !/tts|image|embedding|audio|live/i.test(m.name))
             .map(m => m.name.replace(/^models\//, ''));
-        PROVIDERS.gemini.models = names;
+    }
+    if (provider === 'anthropic') {
+        const res = await fetch('https://api.anthropic.com/v1/models?limit=100', {
+            headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
+        return (data.data || []).map(m => m.id).filter(Boolean);
+    }
+    const res = await fetch('https://api.openai.com/v1/models', { headers: { 'Authorization': `Bearer ${key}` } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
+    return (data.data || []).map(m => m.id)
+        .filter(id => /^(gpt|o\d|chatgpt)/.test(id) && !/audio|realtime|tts|whisper|embedding|image|moderation|transcribe|search|instruct|codex/i.test(id))
+        .sort();
+}
+
+$('btnListModels').onclick = async () => {
+    // 입력칸의 키 중 선택된 공급자 키 → 없으면 이미 등록된 같은 공급자 키
+    const typed = splitKeys($('s-key').value);
+    const key = typed.find(k => (detectProvider(k) || draftProvider) === draftProvider)
+        || state.keys.find(k => k.provider === draftProvider)?.key;
+    if (!key) { toast(`${PROVIDERS[draftProvider].label} 키를 입력하거나 먼저 등록해 주세요.`, true); return; }
+    const btn = $('btnListModels'); const orig = btn.innerHTML;
+    btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>불러오는 중...';
+    try {
+        const names = await fetchModelNames(draftProvider, key);
+        if (!names.length) throw new Error('불러온 모델이 없습니다.');
+        PROVIDERS[draftProvider].models = names;
         $('modelList').innerHTML = names.map(n => `<option value="${n}">`).join('');
         renderKeyList();
-        toast(`${names.length}개 모델을 찾았어요. 모델 칸을 클릭해 선택하세요.`);
+        toast(`${PROVIDERS[draftProvider].label} 모델 ${names.length}개를 찾았어요. 모델 칸을 클릭해 선택하세요.`);
         $('s-model').focus();
     } catch (err) { toast(friendlyError(err), true); }
+    finally { btn.disabled = false; btn.innerHTML = orig; }
 };
+
+/* 모델 칸: 값이 있어도 클릭하면 전체 목록이 보이도록 */
+(function () {
+    const m = $('s-model');
+    m.addEventListener('focus', () => { m.dataset.prev = m.value; m.placeholder = m.value; m.value = ''; });
+    m.addEventListener('blur', () => { if (!m.value.trim()) m.value = m.dataset.prev || PROVIDERS[draftProvider].defaultModel; });
+})();
 
 /* =========================================================
    테마
