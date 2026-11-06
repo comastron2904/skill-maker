@@ -686,7 +686,13 @@ function setForm(f) {
 }
 
 function syncFileDesc() { $('f-filedesc').classList.toggle('hidden', !$('f-files').checked); }
-function saveDraft() { safeLS.set(LS.draft, JSON.stringify({ form: getForm(), result: state.result })); }
+function saveDraft() {
+    safeLS.set(LS.draft, JSON.stringify({
+        form: getForm(), result: state.result,
+        fullText: (state.result && state.fullEdited) ? $('fullText').value : null,
+        view: state.view
+    }));
+}
 
 function setStatus(text, kind = 'ready') {
     $('statusText').textContent = text;
@@ -1248,6 +1254,7 @@ async function generate() {
     }
     if (!usableKeys().length) { openSettings(); toast(state.keys.length ? '사용 가능한 키가 없어요. 키 상태를 확인해 주세요.' : '먼저 AI API 키를 등록해 주세요.', true); return; }
 
+    if (state.result && state.fullEdited && !confirm('전체 텍스트에서 직접 수정한 내용은 새로 생성한 결과로 덮어써집니다. 계속할까요?')) return;
     const prevHTML = $('previewBody').innerHTML;
     setBusy(true, '작성 중...');
     setView('structured');
@@ -1733,6 +1740,11 @@ $('btnReset').onclick = () => {
 ['f-name', 'f-target', 'f-purpose', 'f-extra', 'f-format', 'f-strict', 'f-files', 'f-filedesc'].forEach(id => $(id).addEventListener('change', saveDraft));
 $('f-files').addEventListener('change', () => { syncFileDesc(); if ($('f-files').checked) $('f-filedesc').focus(); });
 document.querySelectorAll('.rule-cb').forEach(c => c.addEventListener('change', saveDraft));
+['f-name', 'f-target', 'f-purpose', 'f-extra', 'f-filedesc'].forEach(id => $(id).addEventListener('input', saveDraft));   // 타이핑 중에도 저장
+$('fullText').addEventListener('input', saveDraft);
+$('viewStructured').addEventListener('click', saveDraft);
+$('viewFull').addEventListener('click', saveDraft);
+window.addEventListener('beforeunload', saveDraft);
 
 /* =========================================================
    초기화
@@ -1753,8 +1765,17 @@ document.querySelectorAll('.rule-cb').forEach(c => c.addEventListener('change', 
     $('typeHint').textContent = TYPE_INFO.gem.hint;
     try {
         const d = JSON.parse(safeLS.get(LS.draft) || 'null');
+        if (d?.result) {                       // 결과를 먼저 복원 (setForm이 임시저장을 덮어쓰지 않도록)
+            state.result = d.result;
+            state.fullEdited = !!d.fullText;
+            if (d.fullText) $('fullText').value = d.fullText;
+        }
         if (d?.form) setForm(d.form);
-        if (d?.result) { state.result = d.result; renderAll(); setStatus('이전 작업을 복원했어요', 'done'); }
+        if (d?.result) {
+            renderAll();
+            setView(d.view === 'full' ? 'full' : 'structured');
+            setStatus('이전 작업을 복원했어요 (초기화를 누르기 전까지 유지됩니다)', 'done');
+        }
     } catch {}
     updateTokens();
 })();
