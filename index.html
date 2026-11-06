@@ -495,11 +495,12 @@
                 </div>
                 <div>
                     <div class="relative">
-                        <textarea id="s-key" rows="2" autocomplete="off" spellcheck="false" placeholder="API 키 (여러 개는 줄바꿈이나 쉼표로 구분해 한 번에 붙여넣기)"
+                        <textarea id="s-key" rows="2" autocomplete="off" spellcheck="false" placeholder="API 키를 붙여넣으면 Gemini / Claude / OpenAI를 자동 인식해 모델까지 맞춰요 (여러 개는 줄바꿈·쉼표로 구분)"
                             class="w-full bg-white border border-soft-border focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 rounded-xl pl-4 pr-10 py-2.5 text-xs font-mono outline-none resize-none" style="-webkit-text-security: disc;"></textarea>
                         <button id="toggleKey" class="absolute right-2 top-2 w-7 h-7 text-soft-subtext"><i class="fa-regular fa-eye"></i></button>
                     </div>
                     <p id="keyHelp" class="text-[11px] text-soft-subtext mt-1"></p>
+                    <p id="keyDetect" class="text-[11px] font-medium text-indigo-600 mt-1 hidden"></p>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
@@ -1480,9 +1481,39 @@ function paintProvider(p) {
     });
 }
 document.querySelectorAll('.prov-btn').forEach(b => b.onclick = () => {
-    if (b.dataset.provider !== draftProvider) $('s-model').value = PROVIDERS[b.dataset.provider].defaultModel;
+    if (b.dataset.provider !== draftProvider) { $('s-model').value = PROVIDERS[b.dataset.provider].defaultModel; modelTouched = false; }
     paintProvider(b.dataset.provider);
 });
+
+/* ---- API 키 형식으로 공급자·모델 자동 인식 ---- */
+let modelTouched = false;                       // 사용자가 모델 칸을 직접 고쳤는지
+$('s-model').addEventListener('input', () => { modelTouched = true; });
+function detectProvider(key) {
+    key = (key || '').trim();
+    if (/^sk-ant-/i.test(key)) return 'anthropic';           // Claude: sk-ant-...
+    if (/^AIza[0-9A-Za-z_-]{30,}$/.test(key)) return 'gemini'; // Gemini: AIza...
+    if (/^sk-/.test(key)) return 'openai';                   // OpenAI: sk-..., sk-proj-...
+    return null;
+}
+function splitKeys(raw) { return raw.split(/[\s,;]+/).map(x => x.trim()).filter(x => x.length > 8); }
+function onKeyInput() {
+    const el = $('keyDetect');
+    const keys = splitKeys($('s-key').value);
+    if (!keys.length) { el.classList.add('hidden'); el.textContent = ''; return; }
+    const counts = {}; let unknown = 0;
+    keys.forEach(k => { const p = detectProvider(k); if (p) counts[p] = (counts[p] || 0) + 1; else unknown++; });
+    const first = detectProvider(keys[0]);
+    if (first && first !== draftProvider) {
+        paintProvider(first);
+        $('s-model').value = PROVIDERS[first].defaultModel;
+        modelTouched = false;
+    }
+    const parts = Object.keys(counts).map(p => `${PROVIDERS[p].label} ${counts[p]}개`);
+    if (unknown) parts.push(`인식 못 함 ${unknown}개(선택한 ${PROVIDERS[draftProvider].label}로 처리)`);
+    el.textContent = '✓ 자동 인식: ' + parts.join(' · ') + (first ? ` → 기본 모델 ${PROVIDERS[first].defaultModel}` : '');
+    el.classList.remove('hidden');
+}
+$('s-key').addEventListener('input', onKeyInput);
 
 const STATUS_CHIP = {
     idle:    ['미확인', 'bg-slate-100 text-slate-500'],
@@ -1582,19 +1613,25 @@ $('btnResetStatus').onclick = () => {
 };
 
 $('btnAddKey').onclick = () => {
-    const keys = $('s-key').value.split(/[\s,;]+/).map(x => x.trim()).filter(x => x.length > 8);
+    const keys = splitKeys($('s-key').value);
     if (!keys.length) { toast('API 키를 입력해 주세요.', true); $('s-key').focus(); return; }
-    const model = $('s-model').value.trim() || PROVIDERS[draftProvider].defaultModel;
+    const typedModel = $('s-model').value.trim();
     const label = $('s-label').value.trim();
-    let added = 0, dup = 0;
+    let added = 0, dup = 0; const addedBy = {};
     keys.forEach((key, n) => {
-        if (state.keys.some(k => k.key === key && k.provider === draftProvider)) { dup++; return; }
-        state.keys.push(newKeyEntry(draftProvider, key, model, label ? (keys.length > 1 ? `${label} ${n + 1}` : label) : ''));
+        const provider = detectProvider(key) || draftProvider;
+        // 직접 입력한 모델은 같은 공급자 키에만 적용, 나머지는 해당 공급자 기본 모델
+        const model = (provider === draftProvider && typedModel) ? typedModel : PROVIDERS[provider].defaultModel;
+        if (state.keys.some(k => k.key === key && k.provider === provider)) { dup++; return; }
+        state.keys.push(newKeyEntry(provider, key, model, label ? (keys.length > 1 ? `${label} ${n + 1}` : label) : ''));
+        addedBy[provider] = (addedBy[provider] || 0) + 1;
         added++;
     });
     saveKeys(); renderKeyList();
     $('s-key').value = ''; $('s-label').value = '';
-    toast(`${added}개 키를 추가했어요${dup ? ` (중복 ${dup}개 제외)` : ''}`);
+    $('keyDetect').classList.add('hidden'); $('keyDetect').textContent = '';
+    const detail = Object.keys(addedBy).map(p => `${PROVIDERS[p].label} ${addedBy[p]}`).join(', ');
+    toast(`${added}개 키를 추가했어요${detail ? ` (${detail})` : ''}${dup ? ` · 중복 ${dup}개 제외` : ''}`);
 };
 
 let modelTimer = null;
