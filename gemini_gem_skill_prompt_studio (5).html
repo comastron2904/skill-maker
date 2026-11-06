@@ -1,0 +1,1753 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Gem & Skill Prompt Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        soft: {
+                            bg: '#F8FAFC', card: '#FFFFFF', accent: '#818CF8', accentHover: '#6366F1',
+                            secondary: '#F1F5F9', border: '#E2E8F0', text: '#334155', subtext: '#64748B',
+                            purple: '#EEF2FF', pink: '#FDF2F8', blue: '#EFF6FF',
+                        }
+                    },
+                    fontFamily: { sans: ['Inter', 'Noto Sans KR', 'sans-serif'] },
+                    borderRadius: { '2xl': '1rem', '3xl': '1.5rem' },
+                    boxShadow: {
+                        'soft-sm': '0 2px 10px rgba(148, 163, 184, 0.08)',
+                        'soft-md': '0 8px 30px rgba(148, 163, 184, 0.12)',
+                        'soft-lg': '0 15px 40px rgba(148, 163, 184, 0.18)',
+                        'soft-inner': 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.03)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%);
+            background-attachment: fixed;
+            font-family: 'Noto Sans KR', 'Inter', sans-serif;
+        }
+        .bg-blob-1 {
+            position: fixed; top: -10%; left: -5%; width: 45vw; height: 45vw;
+            background: radial-gradient(circle, rgba(199, 210, 254, 0.4) 0%, rgba(255, 255, 255, 0) 70%);
+            z-index: -1; filter: blur(50px);
+        }
+        .bg-blob-2 {
+            position: fixed; bottom: -10%; right: -5%; width: 50vw; height: 50vw;
+            background: radial-gradient(circle, rgba(251, 207, 232, 0.35) 0%, rgba(255, 255, 255, 0) 70%);
+            z-index: -1; filter: blur(60px);
+        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .tab-btn { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+        .card-body { transition: all .2s ease; }
+        .collapsed .card-body { display: none; }
+        .collapsed .chev { transform: rotate(-90deg); }
+        .chev { transition: transform .2s ease; }
+        .shimmer {
+            background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+            background-size: 200% 100%;
+            animation: shimmer 1.3s infinite linear;
+        }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .modal-backdrop { background: rgba(15, 23, 42, .35); backdrop-filter: blur(4px); }
+        #toast { transition: all .25s ease; }
+
+        /* ---------- Dark mode ---------- */
+        html.dark body { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); color: #cbd5e1; }
+        html.dark .bg-blob-1, html.dark .bg-blob-2 { opacity: .25; }
+        html.dark .glass-panel { background: rgba(15, 23, 42, 0.82); border-color: rgba(51, 65, 85, .7) !important; }
+        html.dark .bg-white, html.dark .bg-white\/90 { background-color: #1e293b !important; }
+        html.dark .bg-slate-50, html.dark .bg-slate-100, html.dark .bg-slate-100\/70 { background-color: #0f172a !important; }
+        html.dark .hover\:bg-slate-50:hover { background-color: #334155 !important; }
+        html.dark .text-soft-text, html.dark .text-slate-500, html.dark .text-slate-600 { color: #cbd5e1 !important; }
+        html.dark .text-soft-subtext, html.dark .text-slate-400 { color: #94a3b8 !important; }
+        html.dark .border-soft-border, html.dark .border-slate-200\/80, html.dark .border-slate-200\/60,
+        html.dark .border-slate-100, html.dark .border-slate-200, html.dark .border-t { border-color: #334155 !important; }
+        html.dark input, html.dark textarea, html.dark select { color: #e2e8f0; }
+        html.dark .bg-indigo-50 { background-color: rgba(99, 102, 241, .16) !important; }
+        html.dark .bg-purple-50 { background-color: rgba(168, 85, 247, .16) !important; }
+        html.dark .bg-pink-50 { background-color: rgba(236, 72, 153, .16) !important; }
+        html.dark .bg-amber-50 { background-color: rgba(245, 158, 11, .16) !important; }
+        html.dark .bg-teal-50 { background-color: rgba(20, 184, 166, .16) !important; }
+        html.dark .bg-red-50 { background-color: rgba(239, 68, 68, .14) !important; }
+        html.dark .shimmer { background: linear-gradient(90deg, #1e293b 0%, #334155 50%, #1e293b 100%); background-size: 200% 100%; }
+        html.dark ::-webkit-scrollbar-thumb { background: #475569; }
+    </style>
+</head>
+<body class="text-soft-text antialiased min-h-screen flex flex-col p-4 md:p-6 lg:p-8">
+
+    <div class="bg-blob-1"></div>
+    <div class="bg-blob-2"></div>
+
+    <div class="max-w-[1600px] w-full mx-auto flex flex-col flex-1 gap-6">
+
+        <!-- 실행 환경 안내 배너 -->
+        <div id="envBanner" class="hidden rounded-2xl px-5 py-3.5 border border-amber-200 bg-amber-50 text-amber-800 text-xs flex items-start gap-3">
+            <i class="fa-solid fa-triangle-exclamation mt-0.5 text-amber-500"></i>
+            <div class="flex-1 leading-relaxed">
+                <b>지금은 API 호출이 막힌 환경에서 열려 있을 수 있어요.</b>
+                채팅 앱의 파일 미리보기 창은 보안상 외부 서버 접속을 차단합니다.
+                파일을 <b>다운로드</b>한 뒤 PC에서 더블클릭해 <b>Chrome·Edge 브라우저로 직접 열면</b> 정상 동작합니다.
+                <span id="envBannerExtra"></span>
+            </div>
+            <button onclick="document.getElementById('envBanner').classList.add('hidden')" class="text-amber-500 hover:text-amber-700"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <!-- HEADER -->
+        <header class="glass-panel rounded-2xl p-4 md:px-8 md:py-5 border border-white/60 shadow-soft-sm flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-400 flex items-center justify-center text-white text-xl shadow-md shadow-indigo-200">
+                    <i class="fa-solid font-bold fa-wand-magic-sparkles"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
+                        Gemini Gem & Skill Studio
+                    </h1>
+                    <p class="text-xs text-soft-subtext">맞춤형 Gem 지침 & 스킬 프롬프트 자동 프레임 빌더</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 flex-wrap">
+                <button id="btnApiSettings" class="px-3.5 py-2 rounded-xl bg-white border border-soft-border text-xs font-medium text-soft-subtext hover:text-soft-text hover:bg-slate-50 transition shadow-sm flex items-center gap-2">
+                    <i class="fa-solid fa-key text-amber-500"></i>
+                    <span id="apiBadge">API 설정</span>
+                </button>
+                <button id="btnImport" class="px-3.5 py-2 rounded-xl bg-white border border-soft-border text-xs font-medium text-soft-subtext hover:text-soft-text hover:bg-slate-50 transition shadow-sm flex items-center gap-2">
+                    <i class="fa-regular fa-folder-open text-indigo-500"></i>
+                    <span>불러오기</span>
+                </button>
+                <input type="file" id="importFile" accept=".json,application/json" class="hidden">
+                <button id="btnSaved" class="px-3.5 py-2 rounded-xl bg-white border border-soft-border text-xs font-medium text-soft-subtext hover:text-soft-text hover:bg-slate-50 transition shadow-sm flex items-center gap-2">
+                    <i class="fa-regular fa-bookmark text-pink-500"></i>
+                    <span>저장된 템플릿</span>
+                    <span id="savedCount" class="hidden text-[10px] bg-pink-50 text-pink-600 rounded-md px-1.5 py-0.5 font-semibold"></span>
+                </button>
+                <div class="h-6 w-[1px] bg-soft-border mx-1"></div>
+                <button id="btnTheme" title="다크 모드" class="w-10 h-10 rounded-xl bg-white border border-soft-border flex items-center justify-center text-soft-subtext hover:text-indigo-600 hover:border-indigo-200 transition shadow-sm">
+                    <i class="fa-regular fa-moon"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN -->
+        <main class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
+
+            <!-- LEFT PANEL -->
+            <section class="lg:col-span-5 glass-panel rounded-3xl p-6 border border-white/60 shadow-soft-md flex flex-col justify-between space-y-6">
+
+                <div class="space-y-6 overflow-y-auto pr-1 max-h-[calc(100vh-280px)]">
+
+                    <!-- 1. Type -->
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-soft-subtext mb-3">
+                            <i class="fa-solid fa-layer-group mr-1.5 text-indigo-500"></i> 생성 유형 선택
+                        </label>
+                        <div class="grid grid-cols-3 gap-2.5 p-1.5 bg-slate-100/70 rounded-2xl border border-slate-200/60">
+                            <button data-type="gem" onclick="selectType(this)" class="tab-btn active-tab bg-white text-indigo-600 font-semibold shadow-sm py-2.5 px-3 rounded-xl text-xs flex flex-col items-center gap-1">
+                                <i class="fa-solid fa-gem text-base"></i>
+                                <span>Custom Gem</span>
+                            </button>
+                            <button data-type="skill" onclick="selectType(this)" class="tab-btn text-soft-subtext hover:text-soft-text py-2.5 px-3 rounded-xl text-xs flex flex-col items-center gap-1">
+                                <i class="fa-solid fa-bolt text-base"></i>
+                                <span>Agent Skill</span>
+                            </button>
+                            <button data-type="workflow" onclick="selectType(this)" class="tab-btn text-soft-subtext hover:text-soft-text py-2.5 px-3 rounded-xl text-xs flex flex-col items-center gap-1">
+                                <i class="fa-solid fa-diagram-project text-base"></i>
+                                <span>Workflow Bot</span>
+                            </button>
+                        </div>
+                        <p id="typeHint" class="text-[11px] text-soft-subtext mt-2 leading-relaxed"></p>
+                    </div>
+
+                    <!-- 2. Basic info -->
+                    <div class="space-y-4">
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-soft-subtext">
+                            <i class="fa-regular fa-id-card mr-1.5 text-indigo-500"></i> 기본 설정 정보
+                        </label>
+
+                        <div>
+                            <span class="text-xs font-medium text-soft-text block mb-1">Gem/Skill 이름 <span class="text-pink-500">*</span></span>
+                            <input id="f-name" type="text" placeholder="예: 한국어 문서 교정전문가"
+                                class="w-full bg-white border border-soft-border focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 rounded-xl px-4 py-2.5 text-sm transition outline-none shadow-soft-inner">
+                        </div>
+
+                        <div>
+                            <span class="text-xs font-medium text-soft-text block mb-1">주요 타겟 대상</span>
+                            <input id="f-target" type="text" placeholder="예: 대학생, 마케팅 담당자, 개발자"
+                                class="w-full bg-white border border-soft-border focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 rounded-xl px-4 py-2.5 text-sm transition outline-none shadow-soft-inner">
+                        </div>
+
+                        <div>
+                            <span class="text-xs font-medium text-soft-text block mb-1">핵심 역할 및 목적 설명 <span class="text-pink-500">*</span></span>
+                            <textarea id="f-purpose" rows="3" placeholder="Gem이 수행해야 할 주요 업무나 정체성을 간단히 적어주세요..."
+                                class="w-full bg-white border border-soft-border focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 rounded-xl p-3.5 text-sm transition outline-none shadow-soft-inner resize-none"></textarea>
+                        </div>
+
+                        <div>
+                            <span class="text-xs font-medium text-soft-text block mb-1">추가 요구사항 <span class="text-soft-subtext font-normal">(선택)</span></span>
+                            <textarea id="f-extra" rows="2" placeholder="예: 답변 끝에 항상 다음 행동 제안 1개 추가, 표준국어대사전 기준 준수"
+                                class="w-full bg-white border border-soft-border focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 rounded-xl p-3.5 text-sm transition outline-none shadow-soft-inner resize-none"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- 3. Rules -->
+                    <div class="space-y-3">
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-soft-subtext">
+                            <i class="fa-solid fa-sliders mr-1.5 text-indigo-500"></i> 톤앤매너 및 세부 규칙
+                        </label>
+
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <label class="flex items-center p-3 bg-white border border-soft-border rounded-xl cursor-pointer hover:border-indigo-200 transition">
+                                <input type="checkbox" data-rule="friendly" checked class="rule-cb w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-400">
+                                <span class="ml-2.5 text-xs font-medium text-soft-text">친근하고 정중한 어조</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-white border border-soft-border rounded-xl cursor-pointer hover:border-indigo-200 transition">
+                                <input type="checkbox" data-rule="stepwise" checked class="rule-cb w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-400">
+                                <span class="ml-2.5 text-xs font-medium text-soft-text">단계별 명확한 설명</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-white border border-soft-border rounded-xl cursor-pointer hover:border-indigo-200 transition">
+                                <input type="checkbox" data-rule="jargon" class="rule-cb w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-400">
+                                <span class="ml-2.5 text-xs font-medium text-soft-text">전문 용어 사용 통제</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-white border border-soft-border rounded-xl cursor-pointer hover:border-indigo-200 transition">
+                                <input type="checkbox" data-rule="markdown" checked class="rule-cb w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-400">
+                                <span class="ml-2.5 text-xs font-medium text-soft-text">마크다운 포맷팅</span>
+                            </label>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 pt-2">
+                            <div>
+                                <span class="text-xs font-medium text-soft-subtext block mb-1">출력 형식 지정</span>
+                                <select id="f-format" class="w-full bg-white border border-soft-border rounded-xl px-3 py-2 text-xs text-soft-text focus:outline-none focus:border-indigo-400">
+                                    <option value="summary">개요 & 요약 중심</option>
+                                    <option value="code">코드 / 스크립트 전용</option>
+                                    <option value="qa">Q&A 구조화 형태</option>
+                                    <option value="chat">자유로운 대화형</option>
+                                </select>
+                            </div>
+                            <div>
+                                <span class="text-xs font-medium text-soft-subtext block mb-1">제약사항 엄격도</span>
+                                <select id="f-strict" class="w-full bg-white border border-soft-border rounded-xl px-3 py-2 text-xs text-soft-text focus:outline-none focus:border-indigo-400">
+                                    <option value="normal">보통 (권장 사항)</option>
+                                    <option value="strict">매우 엄격 (규칙 필수)</option>
+                                    <option value="flexible">유연함 (창의성 우선)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="pt-4 border-t border-slate-200/80 flex gap-3">
+                    <button id="btnReset" class="w-1/3 py-3 px-4 rounded-xl border border-soft-border bg-white text-soft-subtext hover:text-soft-text hover:bg-slate-50 font-medium text-xs transition shadow-sm">
+                        <i class="fa-solid fa-rotate-left mr-1"></i> 초기화
+                    </button>
+                    <button id="btnGenerate" class="w-2/3 py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:to-pink-600 text-white font-semibold text-xs shadow-md shadow-indigo-100 hover:shadow-indigo-200 transition flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+                        <i id="genIcon" class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span id="genLabel">지침 프롬프트 자동 생성</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- RIGHT PANEL -->
+            <section class="lg:col-span-7 glass-panel rounded-3xl p-6 border border-white/60 shadow-soft-md flex flex-col justify-between space-y-4">
+
+                <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-200/80">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-red-400"></span>
+                        <span class="w-3 h-3 rounded-full bg-yellow-400"></span>
+                        <span class="w-3 h-3 rounded-full bg-green-400"></span>
+                        <span id="previewTitle" class="text-xs font-semibold text-soft-subtext ml-2">System Instructions Preview</span>
+                    </div>
+
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <div class="bg-slate-100 p-1 rounded-xl flex text-xs">
+                            <button id="viewStructured" class="px-3 py-1 rounded-lg bg-white font-medium shadow-sm text-indigo-600">구조화 뷰</button>
+                            <button id="viewFull" class="px-3 py-1 rounded-lg text-soft-subtext hover:text-soft-text">전체 텍스트</button>
+                        </div>
+                        <button id="btnSave" title="템플릿으로 저장" class="w-8 h-8 rounded-xl bg-pink-50 text-pink-600 hover:bg-pink-100 text-xs transition flex items-center justify-center">
+                            <i class="fa-regular fa-bookmark"></i>
+                        </button>
+                        <button id="btnDownload" title="파일로 다운로드" class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 hover:bg-purple-100 text-xs transition flex items-center justify-center">
+                            <i class="fa-solid fa-download"></i>
+                        </button>
+                        <button id="btnCopy" class="px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-medium text-xs transition flex items-center gap-1.5">
+                            <i class="fa-regular fa-copy"></i>
+                            <span>복사하기</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Structured view -->
+                <div id="previewBody" class="space-y-4 overflow-y-auto pr-1 max-h-[calc(100vh-320px)] flex-1">
+
+                    <div class="section-card bg-white/90 border border-slate-200/80 rounded-2xl p-4 shadow-soft-sm transition hover:border-indigo-200">
+                        <div class="card-head flex items-center justify-between mb-2 cursor-pointer">
+                            <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+                                <i class="fa-solid fa-user-gear"></i> 1. 역할 및 정체성 (Role & Persona)
+                            </span>
+                            <i class="chev fa-solid fa-chevron-down text-slate-300 text-xs"></i>
+                        </div>
+                        <p class="card-body text-xs text-slate-500 leading-relaxed font-mono bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            당신은 전문적인 [입력한 이름]입니다. 주요 목적은 [목적 설명]을 바탕으로 사용자의 요청에 정확하고 신뢰할 수 있는 답변을 제공하는 것입니다.
+                        </p>
+                    </div>
+
+                    <div class="section-card bg-white/90 border border-slate-200/80 rounded-2xl p-4 shadow-soft-sm transition hover:border-indigo-200">
+                        <div class="card-head flex items-center justify-between mb-2 cursor-pointer">
+                            <span class="text-xs font-bold text-purple-600 bg-purple-50 px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+                                <i class="fa-solid fa-shield-halved"></i> 2. 행동 원칙 및 지침 (Principles)
+                            </span>
+                            <i class="chev fa-solid fa-chevron-down text-slate-300 text-xs"></i>
+                        </div>
+                        <ul class="card-body text-xs text-slate-500 space-y-1.5 font-mono bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <li>• 모든 응답은 친근하고 정중하게 작성합니다.</li>
+                            <li>• 확실하지 않은 정보는 임의로 추측하지 않고 명확히 확인을 요청합니다.</li>
+                            <li>• 가독성을 높이기 위해 불렛 포인트와 명확한 헤더 구조를 사용합니다.</li>
+                        </ul>
+                    </div>
+
+                    <div class="section-card bg-white/90 border border-slate-200/80 rounded-2xl p-4 shadow-soft-sm transition hover:border-indigo-200">
+                        <div class="card-head flex items-center justify-between mb-2 cursor-pointer">
+                            <span class="text-xs font-bold text-pink-600 bg-pink-50 px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+                                <i class="fa-solid fa-list-check"></i> 3. 단계별 수행 프로세스 (Workflow)
+                            </span>
+                            <i class="chev fa-solid fa-chevron-down text-slate-300 text-xs"></i>
+                        </div>
+                        <ol class="card-body text-xs text-slate-500 space-y-1.5 font-mono bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <li>1. 사용자 입력 요청 분석 및 의도 파악</li>
+                            <li>2. 필요한 가이드라인에 맞춰 답변 초안 구성</li>
+                            <li>3. 출력 제약 조건 준수 여부 검토 후 최종 응답 제공</li>
+                        </ol>
+                    </div>
+
+                    <div class="section-card bg-white/90 border border-slate-200/80 rounded-2xl p-4 shadow-soft-sm transition hover:border-indigo-200">
+                        <div class="card-head flex items-center justify-between mb-2 cursor-pointer">
+                            <span class="text-xs font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+                                <i class="fa-solid fa-ban"></i> 4. 출력 포맷 및 제약 사항 (Constraints)
+                            </span>
+                            <i class="chev fa-solid fa-chevron-down text-slate-300 text-xs"></i>
+                        </div>
+                        <div class="card-body text-xs text-slate-500 font-mono bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
+                            <p>[포맷]: Markdown 지원 표, 코드블록, 강조체 활용</p>
+                            <p>[금지사항]: 추측성 답변 금지, 불필요한 장문 지양</p>
+                        </div>
+                    </div>
+
+                    <div class="section-card bg-white/90 border border-slate-200/80 rounded-2xl p-4 shadow-soft-sm transition hover:border-indigo-200">
+                        <div class="card-head flex items-center justify-between mb-2 cursor-pointer">
+                            <span class="text-xs font-bold text-teal-600 bg-teal-50 px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+                                <i class="fa-solid fa-vial"></i> 5. 입출력 예시 (Few-shot Examples)
+                            </span>
+                            <i class="chev fa-solid fa-chevron-down text-slate-300 text-xs"></i>
+                        </div>
+                        <div class="card-body text-xs text-slate-400 italic font-mono bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
+                            자동 생성 버튼을 누르면 추천 Few-shot 예시가 이곳에 채워집니다.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Full text view -->
+                <div id="fullWrap" class="hidden flex-1 flex flex-col">
+                    <textarea id="fullText" spellcheck="false"
+                        class="flex-1 w-full min-h-[420px] max-h-[calc(100vh-320px)] bg-slate-50 border border-slate-100 rounded-2xl p-4 text-xs leading-relaxed font-mono text-slate-600 outline-none focus:border-indigo-300 resize-none"
+                        placeholder="생성된 전체 지침이 여기에 표시됩니다. 직접 수정할 수도 있어요."></textarea>
+                    <p id="editedNote" class="hidden text-[11px] text-amber-600 mt-1.5"><i class="fa-solid fa-pen mr-1"></i>직접 수정한 내용이 복사·다운로드·저장에 사용됩니다.</p>
+                </div>
+
+                <!-- Refine bar -->
+                <div id="refineBar" class="hidden flex gap-2">
+                    <input id="refineInput" type="text" placeholder="수정 요청 (예: 예시를 3개로 늘리고, 금지사항에 개인정보 요청 금지 추가)"
+                        class="flex-1 bg-white border border-soft-border focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 rounded-xl px-3.5 py-2 text-xs transition outline-none shadow-soft-inner">
+                    <button id="btnRefine" class="px-3.5 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-medium transition flex items-center gap-1.5 disabled:opacity-60">
+                        <i class="fa-solid fa-arrows-rotate"></i><span>다듬기</span>
+                    </button>
+                </div>
+
+                <div class="pt-2 flex items-center justify-between text-xs text-soft-subtext gap-2">
+                    <span class="flex items-center gap-1.5">
+                        <span id="statusDot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span id="statusText">프레임 준비 완료 (지침 생성 대기 중)</span>
+                    </span>
+                    <span id="tokenText">예상 토큰 수: ~380 tokens</span>
+                </div>
+            </section>
+        </main>
+
+        <!-- TEMPLATES -->
+        <footer class="glass-panel rounded-2xl p-5 border border-white/60 shadow-soft-sm space-y-3">
+            <div class="flex items-center justify-between">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-soft-subtext flex items-center gap-1.5">
+                    <i class="fa-solid fa-cubes text-purple-500"></i> 추천 Gem & Skill 템플릿 프레임
+                </h3>
+                <span class="text-xs text-slate-400">클릭하여 양식 불러오기</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div data-preset="0" class="preset bg-white border border-soft-border p-3.5 rounded-2xl hover:border-indigo-300 hover:shadow-soft-md transition cursor-pointer flex items-start gap-3 group">
+                    <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition">
+                        <i class="fa-solid fa-pen-nib text-sm"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-soft-text">자기소개서 교정 Gem</h4>
+                        <p class="text-[11px] text-soft-subtext mt-0.5 line-clamp-1">문맥 교정 및 호감도 높은 어조로 다듬기</p>
+                    </div>
+                </div>
+                <div data-preset="1" class="preset bg-white border border-soft-border p-3.5 rounded-2xl hover:border-indigo-300 hover:shadow-soft-md transition cursor-pointer flex items-start gap-3 group">
+                    <div class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 group-hover:bg-purple-600 group-hover:text-white transition">
+                        <i class="fa-solid fa-code text-sm"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-soft-text">코드 리뷰어 Skill</h4>
+                        <p class="text-[11px] text-soft-subtext mt-0.5 line-clamp-1">클린 코드 규칙 및 보안 취약점 점검</p>
+                    </div>
+                </div>
+                <div data-preset="2" class="preset bg-white border border-soft-border p-3.5 rounded-2xl hover:border-indigo-300 hover:shadow-soft-md transition cursor-pointer flex items-start gap-3 group">
+                    <div class="w-9 h-9 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center shrink-0 group-hover:bg-pink-600 group-hover:text-white transition">
+                        <i class="fa-solid fa-chart-pie text-sm"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-soft-text">데이터 요약 어시스턴트</h4>
+                        <p class="text-[11px] text-soft-subtext mt-0.5 line-clamp-1">긴 보고서나 표 데이터를 핵심으로 요약</p>
+                    </div>
+                </div>
+                <div data-preset="3" class="preset bg-white border border-soft-border p-3.5 rounded-2xl hover:border-indigo-300 hover:shadow-soft-md transition cursor-pointer flex items-start gap-3 group">
+                    <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 group-hover:bg-amber-600 group-hover:text-white transition">
+                        <i class="fa-solid fa-lightbulb text-sm"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-soft-text">아이디어 브레인스토밍</h4>
+                        <p class="text-[11px] text-soft-subtext mt-0.5 line-clamp-1">창의적인 기획안과 다각도 아이디어 도출</p>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- API SETTINGS MODAL -->
+    <div id="settingsModal" class="hidden fixed inset-0 z-50 modal-backdrop flex items-center justify-center p-4">
+        <div class="glass-panel bg-white w-full max-w-2xl rounded-3xl border border-white/60 shadow-soft-lg p-6 space-y-4 max-h-[92vh] overflow-y-auto">
+            <div class="flex items-center justify-between">
+                <h2 class="text-sm font-bold flex items-center gap-2"><i class="fa-solid fa-key text-amber-500"></i> AI API 키 관리 <span class="text-[11px] font-normal text-soft-subtext">실패하면 다음 키로 자동 전환</span></h2>
+                <button data-close="settingsModal" class="w-8 h-8 rounded-lg hover:bg-slate-50 text-soft-subtext"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <!-- 등록된 키 목록 -->
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-semibold text-soft-text">등록된 키 <span id="keyCountLabel" class="text-soft-subtext font-normal"></span></span>
+                    <div class="flex items-center gap-1.5">
+                        <button id="btnResetStatus" class="text-[11px] px-2.5 py-1.5 rounded-lg bg-white border border-soft-border hover:bg-slate-50 text-soft-subtext"><i class="fa-solid fa-broom mr-1"></i>상태 초기화</button>
+                        <button id="btnTestAll" class="text-[11px] px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"><i class="fa-solid fa-plug mr-1"></i>전체 테스트</button>
+                    </div>
+                </div>
+                <div id="keyList" class="space-y-2"></div>
+                <p class="text-[11px] text-soft-subtext mt-2 leading-relaxed">
+                    <i class="fa-solid fa-circle-info mr-1 text-indigo-400"></i>위에서부터 순서대로 사용합니다. 한도 초과(429)·키 오류·서버 오류·응답 형식 오류가 나면 다음 키로 넘어가고,
+                    한도 초과 키는 잠시 쉬었다가 다시 후보에 들어갑니다.
+                </p>
+            </div>
+
+            <!-- 키 추가 -->
+            <div class="rounded-2xl border border-dashed border-indigo-200 p-4 space-y-3 bg-indigo-50/40">
+                <span class="text-xs font-semibold text-soft-text block"><i class="fa-solid fa-plus mr-1 text-indigo-500"></i>키 추가</span>
+                <div class="grid grid-cols-3 gap-2" id="providerGroup">
+                    <button data-provider="gemini" class="prov-btn py-2 rounded-xl border border-soft-border bg-white text-xs font-medium">Gemini</button>
+                    <button data-provider="anthropic" class="prov-btn py-2 rounded-xl border border-soft-border bg-white text-xs font-medium">Claude</button>
+                    <button data-provider="openai" class="prov-btn py-2 rounded-xl border border-soft-border bg-white text-xs font-medium">OpenAI</button>
+                </div>
+                <div>
+                    <span class="text-[11px] font-medium text-soft-text block mb-1.5"><i class="fa-solid fa-arrow-up-right-from-square mr-1 text-indigo-400"></i>API 키 발급 사이트 <span class="text-soft-subtext font-normal">(새 탭에서 열림 · 로그인 필요)</span></span>
+                    <div class="grid grid-cols-3 gap-2" id="keySiteLinks">
+                        <a data-site="gemini" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer"
+                           class="key-site flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white border border-soft-border text-[11px] font-semibold text-soft-text hover:border-indigo-300 hover:text-indigo-600 hover:shadow-soft-sm transition">
+                            <i class="fa-brands fa-google text-blue-500"></i> Google AI Studio
+                        </a>
+                        <a data-site="anthropic" href="https://platform.claude.com/settings/keys" target="_blank" rel="noopener noreferrer"
+                           class="key-site flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white border border-soft-border text-[11px] font-semibold text-soft-text hover:border-indigo-300 hover:text-indigo-600 hover:shadow-soft-sm transition">
+                            <i class="fa-solid fa-asterisk text-orange-500"></i> Claude Console
+                        </a>
+                        <a data-site="openai" href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer"
+                           class="key-site flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white border border-soft-border text-[11px] font-semibold text-soft-text hover:border-indigo-300 hover:text-indigo-600 hover:shadow-soft-sm transition">
+                            <i class="fa-solid fa-circle-nodes text-emerald-600"></i> OpenAI Platform
+                        </a>
+                    </div>
+                </div>
+                <div>
+                    <div class="relative">
+                        <textarea id="s-key" rows="2" autocomplete="off" spellcheck="false" placeholder="API 키 (여러 개는 줄바꿈이나 쉼표로 구분해 한 번에 붙여넣기)"
+                            class="w-full bg-white border border-soft-border focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 rounded-xl pl-4 pr-10 py-2.5 text-xs font-mono outline-none resize-none" style="-webkit-text-security: disc;"></textarea>
+                        <button id="toggleKey" class="absolute right-2 top-2 w-7 h-7 text-soft-subtext"><i class="fa-regular fa-eye"></i></button>
+                    </div>
+                    <p id="keyHelp" class="text-[11px] text-soft-subtext mt-1"></p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[11px] font-medium text-soft-text">모델</span>
+                            <button id="btnListModels" class="text-[11px] text-indigo-600 hover:underline"><i class="fa-solid fa-list mr-1"></i>모델 불러오기</button>
+                        </div>
+                        <input id="s-model" list="modelList" type="text"
+                            class="w-full bg-white border border-soft-border focus:border-indigo-400 rounded-xl px-3 py-2 text-xs outline-none">
+                        <datalist id="modelList"></datalist>
+                    </div>
+                    <div>
+                        <span class="text-[11px] font-medium text-soft-text block mb-1">이름표 (선택)</span>
+                        <input id="s-label" type="text" placeholder="예: 개인 계정, 무료 #2"
+                            class="w-full bg-white border border-soft-border focus:border-indigo-400 rounded-xl px-3 py-2 text-xs outline-none">
+                    </div>
+                </div>
+                <button id="btnAddKey" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs font-semibold">
+                    <i class="fa-solid fa-plus mr-1"></i> 목록에 추가
+                </button>
+            </div>
+
+            <!-- 기타 설정 -->
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <span class="text-xs font-medium text-soft-text block mb-1">지침 작성 언어</span>
+                    <select id="s-lang" class="w-full bg-white border border-soft-border rounded-xl px-3 py-2 text-xs">
+                        <option value="ko">한국어</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
+                <div>
+                    <span class="text-xs font-medium text-soft-text block mb-1">예시 개수</span>
+                    <select id="s-examples" class="w-full bg-white border border-soft-border rounded-xl px-3 py-2 text-xs">
+                        <option value="1">1개</option>
+                        <option value="2" selected>2개</option>
+                        <option value="3">3개</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label class="flex items-start gap-2 text-xs text-soft-text cursor-pointer">
+                    <input id="s-fallback" type="checkbox" checked class="mt-0.5 w-4 h-4 text-indigo-600 rounded border-slate-300">
+                    <span>서버 혼잡·한도 초과 시 대체 모델로 자동 전환 <span class="text-soft-subtext">(예: gemini-flash-latest → 2.5-flash → flash-lite → 2.5-pro)</span></span>
+                </label>
+                <label class="flex items-start gap-2 text-xs text-soft-text cursor-pointer">
+                    <input id="s-rotate" type="checkbox" class="mt-0.5 w-4 h-4 text-indigo-600 rounded border-slate-300">
+                    <span>요청마다 키를 돌아가며 사용 <span class="text-soft-subtext">(무료 한도를 여러 키에 고르게 분산. 끄면 항상 1번 키부터 시도)</span></span>
+                </label>
+                <label class="flex items-start gap-2 text-xs text-soft-text cursor-pointer">
+                    <input id="s-remember" type="checkbox" class="mt-0.5 w-4 h-4 text-indigo-600 rounded border-slate-300">
+                    <span>이 브라우저에 API 키 저장 <span class="text-soft-subtext">(개인 PC에서만 권장. 해제하면 탭을 닫을 때 지워집니다)</span></span>
+                </label>
+            </div>
+
+            <button id="btnSaveSettings" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold">
+                저장하고 닫기
+            </button>
+        </div>
+    </div>
+
+    <!-- SAVED TEMPLATES MODAL -->
+    <div id="savedModal" class="hidden fixed inset-0 z-50 modal-backdrop flex items-center justify-center p-4">
+        <div class="glass-panel bg-white w-full max-w-lg rounded-3xl border border-white/60 shadow-soft-lg p-6 space-y-4">
+            <div class="flex items-center justify-between">
+                <h2 class="text-sm font-bold flex items-center gap-2"><i class="fa-regular fa-bookmark text-pink-500"></i> 저장된 템플릿</h2>
+                <div class="flex items-center gap-1">
+                    <button id="btnExportAll" class="text-[11px] px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"><i class="fa-solid fa-file-export mr-1"></i>전체 내보내기</button>
+                    <button data-close="savedModal" class="w-8 h-8 rounded-lg hover:bg-slate-50 text-soft-subtext"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+            <div id="savedList" class="space-y-2 max-h-[60vh] overflow-y-auto pr-1"></div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 translate-y-4 opacity-0 pointer-events-none z-[60] px-4 py-2.5 rounded-xl bg-slate-800 text-white text-xs shadow-soft-lg"></div>
+
+<script>
+/* =========================================================
+   상수 & 상태
+   ========================================================= */
+const LS = { settings: 'gss.settings', key: 'gss.key', saved: 'gss.saved', theme: 'gss.theme', draft: 'gss.draft', keys: 'gss.keys' };
+
+const PROVIDERS = {
+    gemini:    { label: 'Gemini', defaultModel: 'gemini-flash-latest', models: ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-flash-lite-latest'],
+                 help: 'Google AI Studio(aistudio.google.com)에서 발급한 키' },
+    anthropic: { label: 'Claude', defaultModel: 'claude-sonnet-5-5', models: ['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-haiku-5-5'],
+                 help: 'Claude Console(console.anthropic.com)에서 발급한 키' },
+    openai:    { label: 'OpenAI', defaultModel: 'gpt-4o-mini', models: ['gpt-4o-mini', 'gpt-4o'],
+                 help: 'OpenAI Platform에서 발급한 키' }
+};
+
+const TYPE_INFO = {
+    gem: {
+        label: 'Custom Gem',
+        hint: 'Gemini 앱의 Gem 만들기 → "지침(Instructions)" 칸에 그대로 붙여넣을 지침을 생성합니다.',
+        guide: 'Google Gemini의 커스텀 Gem "지침(Instructions)" 입력란에 그대로 붙여넣을 시스템 지침. Gem의 페르소나, 수행 작업, 맥락, 출력 형식이 분명해야 하며, 2인칭("당신은 …")으로 작성한다. description은 Gem 목록에 노출될 1문장 설명.',
+        file: 'gem-instructions.md'
+    },
+    skill: {
+        label: 'Agent Skill',
+        hint: 'SKILL.md 형식(name/description 프론트매터 + 절차 본문)의 에이전트 스킬을 생성합니다.',
+        guide: '에이전트가 필요할 때 불러 쓰는 Skill(SKILL.md). description은 "언제 이 스킬을 써야 하는지"를 트리거 조건 중심으로 한 문장에 명확히 적는다(무엇을 하는지 + 언제 쓰는지). 본문은 에이전트가 따를 명령형 절차 중심으로, 모호한 판단 기준 대신 구체적 규칙을 쓴다.',
+        file: 'SKILL.md'
+    },
+    workflow: {
+        label: 'Workflow Bot',
+        hint: '여러 단계를 순서대로 진행하는 워크플로우형 봇 지침(단계별 입력·출력·확인 지점 포함)을 생성합니다.',
+        guide: '여러 단계를 순차적으로 진행하는 워크플로우 봇의 시스템 지침. workflow 각 항목에 해당 단계의 목표, 사용자에게 받아야 할 입력, 산출물, 다음 단계로 넘어가는 조건(사용자 확인 지점)을 한 문장 안에 압축해 담는다.',
+        file: 'workflow-bot.md'
+    }
+};
+
+const RULES = {
+    friendly: '친근하고 정중한 어조를 유지한다',
+    stepwise: '설명은 단계별로 명확하게 나눈다',
+    jargon:   '전문 용어 사용을 최소화하고, 불가피하면 쉬운 말로 풀어 설명한다',
+    markdown: '마크다운(헤더, 목록, 표, 코드블록)으로 가독성 있게 포맷팅한다'
+};
+const FORMATS = {
+    summary: '개요와 핵심 요약을 먼저 제시하고 세부 내용을 뒤에 배치하는 형식',
+    code:    '코드/스크립트 위주 출력, 설명은 최소화하고 코드블록에 언어를 명시',
+    qa:      '질문-답변(Q&A) 구조로 정리된 형식',
+    chat:    '자연스러운 대화형 응답'
+};
+const STRICT = {
+    normal:   { text: '규칙은 권장 사항 수준으로 작성하되 핵심 금지사항은 분명히 한다', temp: 0.7 },
+    strict:   { text: '모든 규칙을 "반드시/절대" 수준의 필수 규칙으로 작성하고, 규칙 위반 시 대응 방법까지 명시한다', temp: 0.4 },
+    flexible: { text: '최소한의 제약만 두고 창의성과 유연성을 우선한다', temp: 1.0 }
+};
+
+const PRESETS = [
+    { type: 'gem', name: '자기소개서 교정 Gem', target: '취업 준비생, 이직 준비자',
+      purpose: '사용자가 붙여넣은 자기소개서의 맞춤법·문맥·논리 흐름을 교정하고, 지원 직무에 맞게 호감도 높은 어조로 다듬어 준다. 원문의 경험과 사실은 바꾸지 않는다.',
+      extra: '수정 전/후 비교와 수정 이유를 함께 제시', rules: ['friendly', 'stepwise', 'markdown'], format: 'summary', strict: 'normal' },
+    { type: 'skill', name: '코드 리뷰어 Skill', target: '개발자, 코드 리뷰어',
+      purpose: '제출된 코드 변경사항을 클린 코드 원칙(가독성, 단일 책임, 네이밍)과 보안 취약점(입력 검증, 인젝션, 비밀정보 노출) 관점에서 점검하고 심각도별로 리뷰 코멘트를 작성한다.',
+      extra: '심각도는 Critical / Major / Minor / Nit 4단계', rules: ['stepwise', 'markdown'], format: 'code', strict: 'strict' },
+    { type: 'gem', name: '데이터 요약 어시스턴트', target: '기획자, 경영진, 마케팅 담당자',
+      purpose: '긴 보고서나 표 데이터를 받아 핵심 수치, 추세, 이상치, 시사점을 짧게 요약한다. 원본에 없는 수치는 만들지 않는다.',
+      extra: '맨 위에 3줄 요약(TL;DR)', rules: ['friendly', 'stepwise', 'jargon', 'markdown'], format: 'summary', strict: 'normal' },
+    { type: 'workflow', name: '아이디어 브레인스토밍', target: '스타트업 창업자, 콘텐츠 기획자',
+      purpose: '주제를 받아 문제 정의 → 다각도 아이디어 발산 → 평가·선별 → 실행 기획안 정리 순으로 함께 아이디어를 발전시킨다.',
+      extra: '각 단계 끝에 사용자 의견을 묻고 진행', rules: ['friendly', 'markdown'], format: 'chat', strict: 'flexible' }
+];
+
+const state = {
+    type: 'gem',
+    view: 'structured',
+    result: null,      // AI 구조화 결과(JSON)
+    fullEdited: false,
+    busy: false,
+    settings: { provider: 'gemini', model: PROVIDERS.gemini.defaultModel, lang: 'ko', examples: 2, remember: false, rotate: false },
+    keys: [],          // [{id, provider, key, model, label, enabled, status, cooldownUntil, lastError}]
+    rrIndex: 0,
+    lastUsedKey: null
+};
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const safeLS = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+    del(k) { try { localStorage.removeItem(k); } catch {} }
+};
+const safeSS = {
+    get(k) { try { return sessionStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { sessionStorage.setItem(k, v); } catch {} },
+    del(k) { try { sessionStorage.removeItem(k); } catch {} }
+};
+const INITIAL_PREVIEW = $('previewBody').innerHTML;
+const IN_FRAME = (() => { try { return window.self !== window.top; } catch { return true; } })();
+function showEnvBanner(afterFailure) {
+    $('envBanner').classList.remove('hidden');
+    $('envBannerExtra').textContent = afterFailure && !IN_FRAME
+        ? ' (브라우저에서 직접 연 상태라면 인터넷 연결, 방화벽, 광고 차단 확장 프로그램을 확인해 주세요.)' : '';
+}
+
+/* =========================================================
+   UI 기본 동작
+   ========================================================= */
+function toast(msg, isError = false) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.toggle('bg-red-600', isError);
+    t.classList.toggle('bg-slate-800', !isError);
+    t.classList.remove('opacity-0', 'translate-y-4');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.add('opacity-0', 'translate-y-4'), isError ? 4200 : 2200);
+}
+
+function selectType(selectedBtn) {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active-tab', 'bg-white', 'text-indigo-600', 'font-semibold', 'shadow-sm');
+        btn.classList.add('text-soft-subtext');
+    });
+    selectedBtn.classList.add('active-tab', 'bg-white', 'text-indigo-600', 'font-semibold', 'shadow-sm');
+    selectedBtn.classList.remove('text-soft-subtext');
+    state.type = selectedBtn.dataset.type;
+    $('typeHint').textContent = TYPE_INFO[state.type].hint;
+    $('f-name').placeholder = state.type === 'skill' ? '예: 코드 리뷰어' : state.type === 'workflow' ? '예: 블로그 글 기획 봇' : '예: 한국어 문서 교정전문가';
+    if (state.result) { renderAll(); }
+    saveDraft();
+}
+
+function setType(type) {
+    const btn = document.querySelector(`.tab-btn[data-type="${type}"]`);
+    if (btn) selectType(btn);
+}
+
+function getForm() {
+    return {
+        type: state.type,
+        name: $('f-name').value.trim(),
+        target: $('f-target').value.trim(),
+        purpose: $('f-purpose').value.trim(),
+        extra: $('f-extra').value.trim(),
+        rules: [...document.querySelectorAll('.rule-cb')].filter(c => c.checked).map(c => c.dataset.rule),
+        format: $('f-format').value,
+        strict: $('f-strict').value
+    };
+}
+
+function setForm(f) {
+    if (!f) return;
+    setType(f.type || 'gem');
+    $('f-name').value = f.name || '';
+    $('f-target').value = f.target || '';
+    $('f-purpose').value = f.purpose || '';
+    $('f-extra').value = f.extra || '';
+    document.querySelectorAll('.rule-cb').forEach(c => c.checked = (f.rules || []).includes(c.dataset.rule));
+    $('f-format').value = f.format || 'summary';
+    $('f-strict').value = f.strict || 'normal';
+    saveDraft();
+}
+
+function saveDraft() { safeLS.set(LS.draft, JSON.stringify({ form: getForm(), result: state.result })); }
+
+function setStatus(text, kind = 'ready') {
+    $('statusText').textContent = text;
+    const dot = $('statusDot');
+    dot.className = 'w-2 h-2 rounded-full ' + ({
+        ready: 'bg-emerald-400 animate-pulse', busy: 'bg-indigo-400 animate-ping',
+        done: 'bg-emerald-500', error: 'bg-red-500'
+    }[kind] || 'bg-emerald-400');
+}
+
+function estimateTokens(text) {
+    let ascii = 0, other = 0;
+    for (const ch of text) (ch.charCodeAt(0) < 128 ? ascii++ : other++);
+    return Math.ceil(ascii / 4 + other / 1.5);
+}
+function updateTokens() {
+    const text = currentText();
+    $('tokenText').textContent = `예상 토큰 수: ~${text ? estimateTokens(text).toLocaleString() : 380} tokens · ${text.length.toLocaleString()}자`;
+}
+
+/* 접기/펼치기 (이벤트 위임) */
+$('previewBody').addEventListener('click', (e) => {
+    const head = e.target.closest('.card-head');
+    if (head && !e.target.closest('button')) head.closest('.section-card').classList.toggle('collapsed');
+    const copyBtn = e.target.closest('[data-copy-section]');
+    if (copyBtn) copyText(sectionText(copyBtn.dataset.copySection), '섹션을 복사했어요');
+});
+
+/* =========================================================
+   프롬프트 구성
+   ========================================================= */
+function buildMetaPrompt(form) {
+    const lang = state.settings.lang === 'en' ? 'English' : '한국어';
+    const nEx = Number(state.settings.examples) || 2;
+    const system =
+`당신은 Google Gemini Gems, 에이전트 Skill, 워크플로우 봇의 시스템 지침을 설계하는 최고 수준의 프롬프트 엔지니어입니다.
+사용자가 준 요구사항을 바탕으로, 실제로 붙여넣어 바로 쓸 수 있는 구체적이고 실행 가능한 지침을 설계합니다.
+
+작성 원칙:
+- 막연한 표현("적절히", "잘") 대신 행동으로 옮길 수 있는 구체적 규칙을 쓴다.
+- 규칙마다 가능하면 이유나 기준을 짧게 덧붙인다.
+- 타겟 사용자의 수준과 상황에 맞춘다.
+- 모든 텍스트 값은 ${lang}로 작성한다. 단 slug는 영문 kebab-case.
+
+반드시 아래 스키마의 JSON 객체 하나만 출력하라. 코드펜스나 설명 문장을 붙이지 마라.
+{
+  "slug": "영문 소문자 kebab-case 식별자, 64자 이하",
+  "title": "표시용 이름",
+  "description": "한 문장 설명",
+  "role": "역할 및 정체성 단락(2~4문장, 2인칭)",
+  "principles": ["행동 원칙 4~7개"],
+  "workflow": ["수행 단계 4~7개, 번호 없이 각 한 문장"],
+  "constraints": { "format": ["출력 포맷 규칙 2~5개"], "prohibited": ["금지 사항 2~5개"] },
+  "examples": [ { "input": "실제 사용자가 보낼 법한 구체적 요청", "output": "지침을 완벽히 따른 모범 응답(간결하게, 600자 이내)" } ]
+}
+examples는 정확히 ${nEx}개.`;
+
+    const user =
+`[생성 유형] ${TYPE_INFO[form.type].label}
+[유형별 작성 가이드] ${TYPE_INFO[form.type].guide}
+[이름] ${form.name}
+[주요 타겟] ${form.target || '(지정 없음 — 목적에서 추론)'}
+[핵심 역할 및 목적] ${form.purpose}
+[추가 요구사항] ${form.extra || '(없음)'}
+[톤앤매너/세부 규칙] ${form.rules.length ? form.rules.map(r => RULES[r]).join(' / ') : '(지정 없음)'}
+[출력 형식] ${FORMATS[form.format]}
+[제약 엄격도] ${STRICT[form.strict].text}`;
+    return { system, user };
+}
+
+function buildRefinePrompt(instruction) {
+    const base = buildMetaPrompt(getForm());
+    const user =
+`${base.user}
+
+[현재 생성된 지침 JSON]
+${JSON.stringify(state.result, null, 2)}
+
+[수정 요청]
+${instruction}
+
+수정 요청을 반영해 같은 스키마의 완전한 JSON 전체를 다시 출력하라. 요청과 무관한 부분은 최대한 유지하라.`;
+    return { system: base.system, user };
+}
+
+/* =========================================================
+   AI API 호출
+   ========================================================= */
+/* 단일 키로 호출 */
+async function callProvider(entry, { system, user }, { temperature = 0.7, json = true, timeoutMs = 90000 } = {}) {
+    const { provider, model, key } = entry;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    const realFetch = window.fetch.bind(window);
+    const fetch = async (url, opt) => {
+        const r = await realFetch(url, Object.assign({}, opt, { signal: ctrl.signal }));
+        if (!r.ok) {
+            const body = await r.clone().json().catch(() => ({}));
+            const err = new Error(body?.error?.message || `HTTP ${r.status}`);
+            err.status = r.status;
+            throw err;
+        }
+        return r;
+    };
+    try { return await callProviderRaw(fetch, provider, model, key, { system, user }, { temperature, json }); }
+    catch (err) { if (err.name === 'AbortError') { const e = new Error('응답 시간 초과'); e.status = 408; throw e; } throw err; }
+    finally { clearTimeout(timer); }
+}
+
+async function callProviderRaw(fetch, provider, model, key, { system, user }, { temperature, json }) {
+    let res, data;
+    if (provider === 'gemini') {
+        res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+            body: JSON.stringify({
+                systemInstruction: { parts: [{ text: system }] },
+                contents: [{ role: 'user', parts: [{ text: user }] }],
+                generationConfig: Object.assign({ temperature }, json ? { responseMimeType: 'application/json' } : {})
+            })
+        });
+        data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
+        const cand = data.candidates?.[0];
+        if (!cand) throw new Error(data.promptFeedback?.blockReason ? `차단됨: ${data.promptFeedback.blockReason}` : '응답이 비어 있습니다.');
+        return (cand.content?.parts || []).filter(p => !p.thought && p.text).map(p => p.text).join('');
+    }
+
+    if (provider === 'anthropic') {
+        res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': key,
+                'anthropic-version': '2023-06-01',
+                'anthropic-dangerous-direct-browser-access': 'true'
+            },
+            body: JSON.stringify({ model, max_tokens: 8000, system, messages: [{ role: 'user', content: user }] })
+        });
+        data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
+        return (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+    }
+
+    if (provider === 'openai') {
+        res = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+            body: JSON.stringify(Object.assign({
+                model,
+                messages: [{ role: 'system', content: system }, { role: 'user', content: user }]
+            }, json ? { response_format: { type: 'json_object' } } : {}))
+        });
+        data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
+        return data.choices?.[0]?.message?.content || '';
+    }
+    throw new Error('알 수 없는 제공자입니다.');
+}
+
+/* =========================================================
+   다중 API 키 & 자동 전환(Failover)
+   ========================================================= */
+const COOLDOWN = { limit: 60_000, error: 15_000 };   // 한도 초과 60초, 일시 오류 15초 휴식
+
+function keyLabel(k) {
+    const i = state.keys.indexOf(k);
+    return k.label ? `#${i + 1} ${k.label}` : `#${i + 1} ${PROVIDERS[k.provider].label}`;
+}
+function maskKey(key) { return key.length > 10 ? key.slice(0, 4) + '…' + key.slice(-4) : '••••'; }
+
+function saveKeys() {
+    const data = JSON.stringify(state.keys);
+    if (state.settings.remember) { safeLS.set(LS.keys, data); safeSS.del(LS.keys); }
+    else { safeSS.set(LS.keys, data); safeLS.del(LS.keys); }
+    updateApiBadge();
+}
+function loadKeys() {
+    try {
+        const raw = safeLS.get(LS.keys) || safeSS.get(LS.keys);
+        if (raw) return JSON.parse(raw).filter(k => k && k.key && PROVIDERS[k.provider]);
+    } catch {}
+    // 이전 버전(단일 키) 데이터 이전
+    const migrated = [];
+    Object.keys(PROVIDERS).forEach(p => {
+        const old = safeLS.get(LS.key + '.' + p) || safeSS.get(LS.key + '.' + p);
+        if (old) migrated.push(newKeyEntry(p, old, state.settings.provider === p && state.settings.model ? state.settings.model : PROVIDERS[p].defaultModel, ''));
+    });
+    return migrated;
+}
+function newKeyEntry(provider, key, model, label) {
+    return { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), provider, key, model, label, enabled: true,
+             status: 'idle', cooldownUntil: 0, lastError: '', okCount: 0, failCount: 0 };
+}
+function usableKeys() { return state.keys.filter(k => k.enabled && k.status !== 'invalid'); }
+
+/* 오류를 종류별로 분류 */
+function classifyError(err) {
+    const m = String(err?.message || err); const st = err?.status || 0;
+    if (!st && (err?.name === 'TypeError' || /Failed to fetch|NetworkError|Load failed|CORS|blocked/i.test(m))) return 'network';
+    if (st === 503 || st === 529 || /high demand|overloaded|UNAVAILABLE|temporarily|try again later/i.test(m)) return 'overloaded';
+    if (st === 429 || /RESOURCE_EXHAUSTED|quota|rate.?limit|too many requests/i.test(m)) return 'limit';
+    if (st === 401 || st === 403 || /API key not valid|invalid x-api-key|Incorrect API key|PERMISSION_DENIED|authentication/i.test(m)) return 'invalid';
+    if (st === 404 || /not found|does not exist|is not supported/i.test(m) && /model/i.test(m)) return 'model';
+    return 'error';   // 5xx, 과부하, 네트워크, 시간 초과, 빈 응답, 형식 오류 등
+}
+const ERROR_TEXT = { limit: '한도 초과', invalid: '키 오류', model: '모델 오류', error: '일시 오류', network: '연결 차단', overloaded: '서버 과부하' };
+
+function markKey(k, kind, err) {
+    if (kind === 'ok') {
+        k.status = 'ok'; k.cooldownUntil = 0; k.lastError = ''; k.okCount = (k.okCount || 0) + 1;
+    } else if (kind === 'overloaded') {
+        // 서버 혼잡은 키 문제가 아님 (키 자체는 인증 통과)
+        k.lastError = '서버 혼잡(모델 과부하) — 키는 정상';
+        if (k.status === 'testing' || k.status === 'idle') k.status = 'ok';
+    } else if (kind === 'network') {
+        // 브라우저/환경이 요청 자체를 막은 경우: 키 상태는 건드리지 않음
+        k.lastError = '요청이 서버에 도달하지 못함 (' + String(err?.message || err).slice(0, 80) + ')';
+        if (k.status === 'testing') k.status = 'idle';
+    } else {
+        k.failCount = (k.failCount || 0) + 1;
+        k.lastError = String(err?.message || err).slice(0, 160);
+        k.status = kind === 'model' ? 'invalid' : kind;   // 모델 오류는 설정을 고칠 때까지 제외
+        k.cooldownUntil = COOLDOWN[kind] ? Date.now() + COOLDOWN[kind] : 0;
+    }
+    saveKeys();
+    if (!$('settingsModal').classList.contains('hidden')) renderKeyList();
+}
+
+/* 시도 순서: 쉬는 중이 아닌 키 → (순환 모드면 회전) → 쉬는 중인 키는 마지막 비상용 */
+function attemptOrder() {
+    const now = Date.now();
+    const pool = usableKeys();
+    let ready = pool.filter(k => !k.cooldownUntil || k.cooldownUntil <= now);
+    const cooling = pool.filter(k => k.cooldownUntil > now).sort((a, b) => a.cooldownUntil - b.cooldownUntil);
+    if (state.settings.rotate && ready.length > 1) {
+        const start = state.rrIndex % ready.length;
+        ready = ready.slice(start).concat(ready.slice(0, start));
+        state.rrIndex = (state.rrIndex + 1) % 1e6;
+    }
+    return ready.concat(cooling);
+}
+
+/* 과부하·한도 초과 시 바꿔 볼 대체 모델 (앞에서부터 시도, 없는 모델은 자동으로 건너뜀) */
+const FALLBACK_MODELS = {
+    gemini:    ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite', 'gemini-2.5-pro'],
+    anthropic: ['claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5'],
+    openai:    ['gpt-4o-mini', 'gpt-4o']
+};
+const MODEL_COOLDOWN = 45_000;          // 과부하난 모델은 45초간 모든 키에서 뒤로 미룸
+const modelBusyUntil = {};               // "provider|model" → 시각
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+function modelsFor(k) {
+    const list = [k.model];
+    if (state.settings.modelFallback !== false) {
+        FALLBACK_MODELS[k.provider].forEach(m => { if (!list.includes(m)) list.push(m); });
+    }
+    const now = Date.now();
+    const free = list.filter(m => !(modelBusyUntil[k.provider + '|' + m] > now));
+    const busy = list.filter(m => modelBusyUntil[k.provider + '|' + m] > now);
+    return free.concat(busy);   // 과부하 중인 모델은 맨 뒤로
+}
+
+/**
+ * 키 × 모델 조합으로 순서대로 시도.
+ *  - 서버 과부하(503): 같은 모델 1회 재시도 → 대체 모델로 전환 (키 탓이 아니므로 키 상태 유지)
+ *  - 한도 초과(429): 모델별 한도가 따로 있으므로 대체 모델 먼저 시도 → 다 막히면 키 휴식
+ *  - 모델 없음(404): 대체 모델이면 조용히 건너뜀
+ *  - 키 오류·연결 차단·기타: 다음 키로 전환
+ * opts.parse 가 있으면 응답 해석까지 성공해야 성공으로 간주.
+ */
+async function callAI(prompts, opts = {}) {
+    const order = attemptOrder();
+    if (!order.length) {
+        const e = new Error(state.keys.length ? '사용 가능한 API 키가 없습니다. 키 상태를 확인하거나 "상태 초기화"를 눌러 주세요.' : 'API 키가 설정되지 않았습니다.');
+        e.noKeys = true; throw e;
+    }
+    const failures = [];
+    for (let i = 0; i < order.length; i++) {
+        const k = order[i];
+        const models = modelsFor(k);
+        let keyKind = null, keyErr = null;
+
+        modelLoop:
+        for (let mi = 0; mi < models.length; mi++) {
+            const model = models[mi];
+            for (let retry = 0; retry < 2; retry++) {
+                opts.onAttempt?.(Object.assign({}, k, { model }), i, order.length, retry);
+                try {
+                    const text = await callProvider(Object.assign({}, k, { model }), prompts, opts);
+                    if (!text || !text.trim()) throw new Error('빈 응답');
+                    const value = opts.parse ? opts.parse(text) : text;
+                    markKey(k, 'ok');
+                    state.lastUsedKey = k;
+                    state.lastUsedModel = model;
+                    if (model !== k.model) toast(`${model} 모델로 생성했어요 (기본 모델 ${k.model} 혼잡)`);
+                    return value;
+                } catch (err) {
+                    const kind = err instanceof SyntaxError ? 'error' : classifyError(err);
+                    console.warn(`[전환] ${keyLabel(k)} · ${model} 실패 (${ERROR_TEXT[kind]}):`, err);
+                    keyErr = err;
+
+                    if (kind === 'overloaded') {
+                        modelBusyUntil[k.provider + '|' + model] = Date.now() + MODEL_COOLDOWN;
+                        if (retry === 0 && mi === 0) { toast(`${model} 서버 혼잡 · 잠시 후 재시도`); await sleep(2000); continue; }
+                        const next = models[mi + 1];
+                        if (next) toast(`${model} 서버 혼잡 → ${next}로 전환`);
+                        keyKind = keyKind || 'overloaded';
+                        continue modelLoop;
+                    }
+                    if (kind === 'model' && mi > 0) { continue modelLoop; }       // 없는 대체 모델은 건너뜀
+                    if (kind === 'limit') {
+                        keyKind = 'limit';
+                        const next = models[mi + 1];
+                        if (next) toast(`${model} 한도 초과 → ${next}로 전환`);
+                        continue modelLoop;
+                    }
+                    if (kind === 'error' && retry === 0) { await sleep(1000); continue; }  // 일시 오류는 1회 재시도
+                    keyKind = kind;
+                    break modelLoop;                                              // 키 오류·연결 차단 등 → 다음 키
+                }
+            }
+        }
+
+        const kind = keyKind || 'error';
+        if (kind !== 'overloaded') markKey(k, kind, keyErr);   // 과부하는 키 탓이 아님
+        else { k.lastError = '모든 모델이 혼잡: ' + String(keyErr?.message || '').slice(0, 100); saveKeys(); }
+        failures.push({ k, kind, err: keyErr });
+        if (i < order.length - 1) toast(`${keyLabel(k)} ${ERROR_TEXT[kind]} → ${keyLabel(order[i + 1])}로 전환`);
+    }
+    if (failures.every(f => f.kind === 'network')) {
+        const e = new Error('network-blocked'); e.network = true; showEnvBanner(true); throw e;
+    }
+    const e = new Error('모든 키가 실패했습니다: ' + failures.map(f => `${keyLabel(f.k)} ${ERROR_TEXT[f.kind]}`).join(', '));
+    e.failures = failures;
+    throw e;
+}
+
+function parseJSON(text) {
+    let t = String(text).trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
+    const s = t.indexOf('{'), e = t.lastIndexOf('}');
+    if (s === -1 || e === -1) throw new Error('AI 응답에서 JSON을 찾지 못했습니다.');
+    const obj = JSON.parse(t.slice(s, e + 1));
+    // 정규화
+    const arr = (v) => Array.isArray(v) ? v.map(x => String(x).replace(/^\s*(\d+[.)]|[-•*])\s*/, '').trim()).filter(Boolean) : (v ? [String(v)] : []);
+    return {
+        slug: String(obj.slug || '').toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64) || 'custom-skill',
+        title: obj.title || '',
+        description: obj.description || '',
+        role: obj.role || '',
+        principles: arr(obj.principles),
+        workflow: arr(obj.workflow),
+        constraints: { format: arr(obj.constraints?.format), prohibited: arr(obj.constraints?.prohibited) },
+        examples: Array.isArray(obj.examples) ? obj.examples.filter(x => x && (x.input || x.output)).map(x => ({ input: String(x.input || ''), output: String(x.output || '') })) : []
+    };
+}
+
+function friendlyError(err) {
+    if (err?.network || classifyError(err) === 'network') {
+        return IN_FRAME
+            ? '미리보기 창 안에서는 외부 API 호출이 막혀 있어요. 파일을 다운로드해서 Chrome·Edge 같은 브라우저로 직접 열어 주세요.'
+            : '요청이 AI 서버에 도달하지 못했어요. 인터넷 연결, 회사·학교 방화벽, 광고 차단 확장 프로그램을 확인해 주세요.';
+    }
+    if (err?.failures && err.failures.every(f => f.kind === 'overloaded')) {
+        return 'AI 서버가 지금 매우 혼잡해서 모든 모델이 응답하지 않았어요. 1~2분 뒤 다시 시도하거나, 다른 제공자(Claude·OpenAI) 키를 추가해 보세요.';
+    }
+    if (err?.failures) {
+        return `등록된 키 ${err.failures.length}개가 모두 실패했어요 — ` +
+            err.failures.map(f => `${keyLabel(f.k)}: ${ERROR_TEXT[f.kind]}`).join(' / ') + '. API 설정에서 키 상태를 확인해 주세요.';
+    }
+    const m = String(err?.message || err);
+    if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return '네트워크 오류 또는 브라우저에서 API 호출이 차단되었습니다. 인터넷 연결과 API 키를 확인하세요.';
+    if (/API key not valid|invalid x-api-key|Incorrect API key|401|403|PERMISSION_DENIED/i.test(m)) return 'API 키가 올바르지 않거나 권한이 없습니다. (' + m.slice(0, 120) + ')';
+    if (/not found|404|does not exist|model/i.test(m) && /model/i.test(m)) return '모델 이름을 확인하세요. API 설정에서 "사용 가능한 모델 불러오기"를 눌러 보세요. (' + m.slice(0, 120) + ')';
+    if (/high demand|overloaded|UNAVAILABLE|503/i.test(m)) return 'AI 서버가 일시적으로 혼잡해요. 잠시 후 다시 시도해 주세요. (' + m.slice(0, 100) + ')';
+    if (/429|quota|rate/i.test(m)) return '요청 한도를 초과했습니다. 잠시 후 다시 시도하세요. (' + m.slice(0, 120) + ')';
+    if (err instanceof SyntaxError) return 'AI 응답 형식을 해석하지 못했습니다. 다시 생성해 보세요.';
+    return m.slice(0, 220);
+}
+
+/* =========================================================
+   렌더링
+   ========================================================= */
+const CARD_STYLES = {
+    role:        { color: 'indigo', icon: 'fa-user-gear',     title: '1. 역할 및 정체성 (Role & Persona)' },
+    principles:  { color: 'purple', icon: 'fa-shield-halved', title: '2. 행동 원칙 및 지침 (Principles)' },
+    workflow:    { color: 'pink',   icon: 'fa-list-check',    title: '3. 단계별 수행 프로세스 (Workflow)' },
+    constraints: { color: 'amber',  icon: 'fa-ban',           title: '4. 출력 포맷 및 제약 사항 (Constraints)' },
+    examples:    { color: 'teal',   icon: 'fa-vial',          title: '5. 입출력 예시 (Few-shot Examples)' }
+};
+
+function card(key, bodyHTML) {
+    const s = CARD_STYLES[key];
+    return `
+    <div class="section-card bg-white/90 border border-slate-200/80 rounded-2xl p-4 shadow-soft-sm transition hover:border-indigo-200">
+        <div class="card-head flex items-center justify-between mb-2 cursor-pointer gap-2">
+            <span class="text-xs font-bold text-${s.color}-600 bg-${s.color}-50 px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+                <i class="fa-solid ${s.icon}"></i> ${s.title}
+            </span>
+            <span class="flex items-center gap-2">
+                <button data-copy-section="${key}" title="이 섹션 복사" class="w-6 h-6 rounded-md text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 text-[11px]"><i class="fa-regular fa-copy"></i></button>
+                <i class="chev fa-solid fa-chevron-down text-slate-300 text-xs"></i>
+            </span>
+        </div>
+        <div class="card-body text-xs text-slate-600 leading-relaxed font-mono bg-slate-50 p-3 rounded-xl border border-slate-100">${bodyHTML}</div>
+    </div>`;
+}
+
+function renderStructured() {
+    const r = state.result;
+    const T = TYPE_INFO[state.type];
+    const header = `
+    <div class="rounded-2xl p-4 border border-indigo-100 bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50">
+        <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-white text-indigo-600 border border-indigo-100">${esc(T.label)}</span>
+            ${state.type === 'skill' ? `<code class="text-[11px] text-purple-600">${esc(r.slug)}</code>` : ''}
+        </div>
+        <h3 class="text-sm font-bold mt-2 text-slate-700">${esc(r.title || getForm().name)}</h3>
+        <p class="text-xs text-slate-500 mt-1 leading-relaxed">${esc(r.description)}</p>
+    </div>`;
+
+    const li = (items, ordered) => items.length
+        ? items.map((x, i) => `<li class="flex gap-2"><span class="shrink-0 text-slate-400">${ordered ? (i + 1) + '.' : '•'}</span><span>${esc(x)}</span></li>`).join('')
+        : '<li class="italic text-slate-400">(내용 없음)</li>';
+
+    const examples = r.examples.length ? r.examples.map((ex, i) => `
+        <div class="${i ? 'mt-3 pt-3 border-t border-slate-200' : ''}">
+            <p class="font-semibold text-teal-600 mb-1">예시 ${i + 1}</p>
+            <p class="mb-1"><span class="font-semibold text-slate-500">👤 입력:</span> <span class="whitespace-pre-wrap">${esc(ex.input)}</span></p>
+            <p><span class="font-semibold text-slate-500">🤖 응답:</span></p>
+            <div class="whitespace-pre-wrap mt-1 pl-3 border-l-2 border-teal-200">${esc(ex.output)}</div>
+        </div>`).join('') : '<p class="italic text-slate-400">(예시 없음)</p>';
+
+    $('previewBody').innerHTML = header +
+        card('role', `<p class="whitespace-pre-wrap">${esc(r.role)}</p>`) +
+        card('principles', `<ul class="space-y-1.5">${li(r.principles)}</ul>`) +
+        card('workflow', `<ol class="space-y-1.5">${li(r.workflow, true)}</ol>`) +
+        card('constraints', `
+            <p class="font-semibold text-amber-600 mb-1">[포맷]</p><ul class="space-y-1 mb-2">${li(r.constraints.format)}</ul>
+            <p class="font-semibold text-red-500 mb-1">[금지사항]</p><ul class="space-y-1">${li(r.constraints.prohibited)}</ul>`) +
+        card('examples', examples);
+}
+
+function renderLoading() {
+    const bar = (w) => `<div class="shimmer h-3 rounded-md" style="width:${w}%"></div>`;
+    $('previewBody').innerHTML = Object.keys(CARD_STYLES).map(k => {
+        const s = CARD_STYLES[k];
+        return `<div class="bg-white/90 border border-slate-200/80 rounded-2xl p-4 shadow-soft-sm">
+            <span class="text-xs font-bold text-${s.color}-600 bg-${s.color}-50 px-2.5 py-1 rounded-lg inline-flex items-center gap-1.5"><i class="fa-solid ${s.icon}"></i> ${s.title}</span>
+            <div class="mt-3 space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100">${bar(92)}${bar(78)}${bar(64)}</div></div>`;
+    }).join('');
+}
+
+/* 섹션 텍스트 / 전체 텍스트 */
+function sectionText(key) {
+    const r = state.result; if (!r) return '';
+    const en = state.settings.lang === 'en';
+    switch (key) {
+        case 'role': return r.role;
+        case 'principles': return r.principles.map(x => `- ${x}`).join('\n');
+        case 'workflow': return r.workflow.map((x, i) => `${i + 1}. ${x}`).join('\n');
+        case 'constraints':
+            return `${en ? 'Format' : '포맷'}:\n${r.constraints.format.map(x => `- ${x}`).join('\n')}\n\n${en ? 'Prohibited' : '금지 사항'}:\n${r.constraints.prohibited.map(x => `- ${x}`).join('\n')}`;
+        case 'examples':
+            return r.examples.map((ex, i) => `${en ? 'Example' : '예시'} ${i + 1}\n${en ? 'User' : '사용자'}: ${ex.input}\n${en ? 'Response' : '응답'}:\n${ex.output}`).join('\n\n');
+    }
+    return '';
+}
+
+function buildFullText() {
+    const r = state.result; if (!r) return '';
+    const en = state.settings.lang === 'en';
+    const H = en
+        ? { role: 'Role & Persona', pr: 'Principles', wf: 'Workflow', cs: 'Output Format & Constraints', fmt: 'Format', pro: 'Prohibited', ex: 'Examples', e: 'Example', u: 'User', a: 'Response' }
+        : { role: '역할 및 정체성', pr: '행동 원칙', wf: '단계별 수행 프로세스', cs: '출력 포맷 및 제약 사항', fmt: '포맷', pro: '금지 사항', ex: '입출력 예시', e: '예시', u: '사용자', a: '응답' };
+
+    const isSkill = state.type === 'skill';
+    const h1 = isSkill ? '#' : '#';
+    const h2 = isSkill ? '##' : '#';
+    const h3 = isSkill ? '###' : '##';
+
+    const out = [];
+    if (isSkill) {
+        out.push('---', `name: ${r.slug}`, `description: ${r.description.replace(/\n/g, ' ')}`, '---', '', `${h1} ${r.title || getForm().name}`, '');
+    } else if (state.type === 'workflow') {
+        out.push(`> ${r.title || getForm().name} — ${r.description}`, '');
+    }
+    out.push(`${h2} ${H.role}`, r.role, '');
+    out.push(`${h2} ${H.pr}`, ...r.principles.map(x => `- ${x}`), '');
+    out.push(`${h2} ${H.wf}`, ...r.workflow.map((x, i) => `${i + 1}. ${x}`), '');
+    out.push(`${h2} ${H.cs}`, `${h3} ${H.fmt}`, ...r.constraints.format.map(x => `- ${x}`), '', `${h3} ${H.pro}`, ...r.constraints.prohibited.map(x => `- ${x}`), '');
+    if (r.examples.length) {
+        out.push(`${h2} ${H.ex}`);
+        r.examples.forEach((ex, i) => {
+            out.push(`${h3} ${H.e} ${i + 1}`, `**${H.u}:** ${ex.input}`, '', `**${H.a}:**`, ex.output, '');
+        });
+    }
+    return out.join('\n').trim() + '\n';
+}
+
+function currentText() {
+    if (!state.result) return '';
+    return state.fullEdited ? $('fullText').value : buildFullText();
+}
+
+function renderAll() {
+    if (!state.result) return;
+    renderStructured();
+    if (!state.fullEdited) $('fullText').value = buildFullText();
+    $('editedNote').classList.toggle('hidden', !state.fullEdited);
+    $('refineBar').classList.remove('hidden');
+    $('previewTitle').textContent = state.type === 'skill' ? 'SKILL.md Preview' : 'System Instructions Preview';
+    updateTokens();
+}
+
+function setView(v) {
+    state.view = v;
+    const on = 'px-3 py-1 rounded-lg bg-white font-medium shadow-sm text-indigo-600';
+    const off = 'px-3 py-1 rounded-lg text-soft-subtext hover:text-soft-text';
+    $('viewStructured').className = v === 'structured' ? on : off;
+    $('viewFull').className = v === 'full' ? on : off;
+    $('previewBody').classList.toggle('hidden', v !== 'structured');
+    $('fullWrap').classList.toggle('hidden', v !== 'full');
+    if (v === 'full' && !state.result && !$('fullText').value) {
+        $('fullText').placeholder = '아직 생성된 지침이 없습니다. 왼쪽에서 정보를 입력하고 "지침 프롬프트 자동 생성"을 눌러 주세요.';
+    }
+}
+
+/* =========================================================
+   생성 / 다듬기
+   ========================================================= */
+function setBusy(b, label) {
+    state.busy = b;
+    $('btnGenerate').disabled = b;
+    $('btnRefine').disabled = b;
+    $('genIcon').className = b ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-wand-magic-sparkles';
+    $('genLabel').textContent = b ? (label || '생성 중...') : '지침 프롬프트 자동 생성';
+}
+
+function attemptStatus(what) {
+    return (k, i, total, retry) => {
+        const label = keyLabel(state.keys.find(x => x.id === k.id) || k);
+        setStatus(`${what} · ${label} · ${k.model}${retry ? ' · 재시도' : ''}${total > 1 ? ` · 키 ${i + 1}/${total}` : ''}`, 'busy');
+        $('genLabel').textContent = (i || retry) ? `${k.model}로 재시도 중...` : `${PROVIDERS[k.provider].label}가 작성 중...`;
+    };
+}
+
+async function generate() {
+    if (state.busy) return;
+    const form = getForm();
+    if (!form.name || !form.purpose) {
+        toast('이름과 핵심 역할 및 목적은 꼭 입력해 주세요.', true);
+        (!form.name ? $('f-name') : $('f-purpose')).focus();
+        return;
+    }
+    if (!usableKeys().length) { openSettings(); toast(state.keys.length ? '사용 가능한 키가 없어요. 키 상태를 확인해 주세요.' : '먼저 AI API 키를 등록해 주세요.', true); return; }
+
+    const prevHTML = $('previewBody').innerHTML;
+    setBusy(true, '작성 중...');
+    setView('structured');
+    renderLoading();
+    const t0 = performance.now();
+    try {
+        state.result = await callAI(buildMetaPrompt(form), { temperature: STRICT[form.strict].temp, parse: parseJSON, onAttempt: attemptStatus('지침 생성 중') });
+        state.fullEdited = false;
+        renderAll();
+        saveDraft();
+        setStatus(`생성 완료 · ${((performance.now() - t0) / 1000).toFixed(1)}초 · ${keyLabel(state.lastUsedKey)} · ${state.lastUsedModel}`, 'done');
+        toast('지침이 생성되었어요 ✨');
+    } catch (err) {
+        console.error(err);
+        $('previewBody').innerHTML = prevHTML;
+        setStatus('생성 실패', 'error');
+        toast(friendlyError(err), true);
+    } finally {
+        setBusy(false);
+    }
+}
+
+async function refine() {
+    if (state.busy || !state.result) return;
+    const instr = $('refineInput').value.trim();
+    if (!instr) { $('refineInput').focus(); return; }
+    if (state.fullEdited && !confirm('전체 텍스트에서 직접 수정한 내용은 다듬기 결과로 덮어써집니다. 계속할까요?')) return;
+    setBusy(true, '다듬는 중...');
+    setStatus('수정 요청 반영 중...', 'busy');
+    try {
+        state.result = await callAI(buildRefinePrompt(instr), { temperature: 0.5, parse: parseJSON, onAttempt: attemptStatus('수정 요청 반영 중') });
+        state.fullEdited = false;
+        renderAll();
+        saveDraft();
+        $('refineInput').value = '';
+        setStatus(`수정 반영 완료 · ${keyLabel(state.lastUsedKey)}`, 'done');
+        toast('수정 요청을 반영했어요');
+    } catch (err) {
+        console.error(err);
+        setStatus('수정 실패', 'error');
+        toast(friendlyError(err), true);
+    } finally {
+        setBusy(false);
+    }
+}
+
+/* =========================================================
+   복사 / 다운로드 / 저장 / 불러오기
+   ========================================================= */
+async function copyText(text, msg = '복사했어요') {
+    if (!text) { toast('복사할 내용이 없습니다. 먼저 지침을 생성해 주세요.', true); return; }
+    try { await navigator.clipboard.writeText(text); }
+    catch {
+        const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy'); ta.remove();
+    }
+    toast(msg);
+}
+
+function download(filename, content, mime = 'text/markdown') {
+    const blob = new Blob([content], { type: mime + ';charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function getSaved() { try { return JSON.parse(safeLS.get(LS.saved) || '[]'); } catch { return []; } }
+function setSaved(list) { safeLS.set(LS.saved, JSON.stringify(list)); updateSavedCount(); }
+function updateSavedCount() {
+    const n = getSaved().length;
+    $('savedCount').textContent = n;
+    $('savedCount').classList.toggle('hidden', !n);
+}
+
+function saveTemplate() {
+    const form = getForm();
+    if (!form.name && !state.result) { toast('저장할 내용이 없습니다.', true); return; }
+    const name = prompt('템플릿 이름을 입력하세요', form.name || '새 템플릿');
+    if (name === null) return;
+    const list = getSaved();
+    list.unshift({
+        id: Date.now().toString(36), name: name.trim() || form.name || '이름 없음', savedAt: new Date().toISOString(),
+        form, result: state.result, fullText: state.fullEdited ? $('fullText').value : null
+    });
+    setSaved(list);
+    toast('템플릿으로 저장했어요');
+}
+
+function loadEntry(entry) {
+    setForm(entry.form);
+    state.result = entry.result || null;
+    state.fullEdited = !!entry.fullText;
+    if (entry.fullText) $('fullText').value = entry.fullText;
+    if (state.result) { renderAll(); setStatus('저장된 템플릿을 불러왔어요', 'done'); }
+    else { $('previewBody').innerHTML = INITIAL_PREVIEW; $('refineBar').classList.add('hidden'); setStatus('양식을 불러왔어요 (지침 생성 대기 중)'); updateTokens(); }
+    saveDraft();
+}
+
+function renderSavedList() {
+    const list = getSaved();
+    const T = { gem: 'fa-gem text-indigo-500', skill: 'fa-bolt text-purple-500', workflow: 'fa-diagram-project text-pink-500' };
+    $('savedList').innerHTML = list.length ? list.map(e => `
+        <div class="flex items-center gap-3 p-3 bg-white border border-soft-border rounded-2xl hover:border-indigo-200 transition">
+            <i class="fa-solid ${T[e.form?.type] || T.gem}"></i>
+            <div class="flex-1 min-w-0">
+                <p class="text-xs font-bold truncate">${esc(e.name)}</p>
+                <p class="text-[11px] text-soft-subtext">${new Date(e.savedAt).toLocaleString('ko-KR')} · ${e.result ? '지침 포함' : '양식만'}</p>
+            </div>
+            <button data-act="load" data-id="${e.id}" class="text-[11px] px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100">불러오기</button>
+            <button data-act="export" data-id="${e.id}" title="JSON 내보내기" class="w-7 h-7 rounded-lg text-soft-subtext hover:bg-slate-50"><i class="fa-solid fa-file-export text-[11px]"></i></button>
+            <button data-act="del" data-id="${e.id}" title="삭제" class="w-7 h-7 rounded-lg text-soft-subtext hover:text-red-500 hover:bg-red-50"><i class="fa-regular fa-trash-can text-[11px]"></i></button>
+        </div>`).join('')
+        : '<p class="text-xs text-soft-subtext text-center py-8">저장된 템플릿이 없습니다.<br>미리보기 상단의 <i class="fa-regular fa-bookmark text-pink-500"></i> 버튼으로 저장해 보세요.</p>';
+}
+
+$('savedList').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-act]'); if (!b) return;
+    const list = getSaved(); const entry = list.find(x => x.id === b.dataset.id); if (!entry) return;
+    if (b.dataset.act === 'load') { loadEntry(entry); closeModal('savedModal'); toast(`"${entry.name}" 불러옴`); }
+    if (b.dataset.act === 'export') download(`${entry.name}.json`, JSON.stringify({ app: 'gem-skill-studio', version: 1, items: [entry] }, null, 2), 'application/json');
+    if (b.dataset.act === 'del' && confirm(`"${entry.name}" 템플릿을 삭제할까요?`)) { setSaved(list.filter(x => x.id !== entry.id)); renderSavedList(); }
+});
+
+$('btnExportAll').onclick = () => {
+    const list = getSaved();
+    if (!list.length) { toast('내보낼 템플릿이 없습니다.', true); return; }
+    download('gem-skill-templates.json', JSON.stringify({ app: 'gem-skill-studio', version: 1, items: list }, null, 2), 'application/json');
+};
+
+$('btnImport').onclick = () => $('importFile').click();
+$('importFile').onchange = async (e) => {
+    const file = e.target.files[0]; e.target.value = '';
+    if (!file) return;
+    try {
+        const data = JSON.parse(await file.text());
+        const items = Array.isArray(data.items) ? data.items : (data.form ? [data] : null);
+        if (!items || !items.length) throw new Error('형식 오류');
+        const list = getSaved();
+        items.forEach(it => list.unshift(Object.assign({}, it, { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), savedAt: it.savedAt || new Date().toISOString() })));
+        setSaved(list);
+        loadEntry(items[0]);
+        toast(`${items.length}개 템플릿을 불러왔어요`);
+    } catch {
+        toast('불러올 수 없는 파일입니다. 이 앱에서 내보낸 JSON 파일을 선택해 주세요.', true);
+    }
+};
+
+/* =========================================================
+   API 설정 모달
+   ========================================================= */
+function openModal(id) { $(id).classList.remove('hidden'); }
+function closeModal(id) { $(id).classList.add('hidden'); }
+document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => closeModal(b.dataset.close));
+['settingsModal', 'savedModal'].forEach(id => $(id).addEventListener('click', e => { if (e.target.id === id) closeModal(id); }));
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeModal('settingsModal'); closeModal('savedModal'); }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); document.activeElement === $('refineInput') ? refine() : generate(); }
+});
+
+let draftProvider = 'gemini';
+function paintProvider(p) {
+    draftProvider = p;
+    document.querySelectorAll('.prov-btn').forEach(b => {
+        const on = b.dataset.provider === p;
+        b.classList.toggle('border-indigo-400', on);
+        b.classList.toggle('text-indigo-600', on);
+        b.classList.toggle('ring-4', on);
+        b.classList.toggle('ring-indigo-100', on);
+    });
+    $('keyHelp').textContent = PROVIDERS[p].help + (p === 'gemini'
+        ? ' · 무료 한도는 키가 아니라 Google Cloud 프로젝트 단위로 적용되니, 서로 다른 프로젝트에서 만든 키를 넣어야 전환 효과가 있어요.'
+        : ' · 키는 이 브라우저에서 해당 AI 서버로만 직접 전송됩니다.');
+    $('modelList').innerHTML = PROVIDERS[p].models.map(m => `<option value="${m}">`).join('');
+    $('btnListModels').classList.toggle('hidden', p !== 'gemini');
+    document.querySelectorAll('.key-site').forEach(a => {
+        const on = a.dataset.site === p;
+        a.classList.toggle('border-indigo-400', on);
+        a.classList.toggle('ring-2', on);
+        a.classList.toggle('ring-indigo-100', on);
+    });
+}
+document.querySelectorAll('.prov-btn').forEach(b => b.onclick = () => {
+    if (b.dataset.provider !== draftProvider) $('s-model').value = PROVIDERS[b.dataset.provider].defaultModel;
+    paintProvider(b.dataset.provider);
+});
+
+const STATUS_CHIP = {
+    idle:    ['미확인', 'bg-slate-100 text-slate-500'],
+    ok:      ['정상', 'bg-emerald-50 text-emerald-600'],
+    limit:   ['한도 초과', 'bg-amber-50 text-amber-600'],
+    error:   ['일시 오류', 'bg-orange-50 text-orange-600'],
+    invalid: ['사용 불가', 'bg-red-50 text-red-500'],
+    testing: ['테스트 중', 'bg-indigo-50 text-indigo-600']
+};
+
+function renderKeyList() {
+    const list = $('keyList');
+    const now = Date.now();
+    $('keyCountLabel').textContent = state.keys.length ? `(${state.keys.length}개 · 사용 가능 ${usableKeys().length}개)` : '';
+    if (!state.keys.length) {
+        list.innerHTML = '<p class="text-xs text-soft-subtext text-center py-5 bg-white border border-soft-border rounded-2xl">아직 등록된 키가 없어요. 아래 <b>API 키 발급 사이트</b> 버튼에서 키를 받아 추가해 주세요.</p>';
+        return;
+    }
+    list.innerHTML = state.keys.map((k, i) => {
+        const [txt, cls] = STATUS_CHIP[k.status] || STATUS_CHIP.idle;
+        const cool = k.cooldownUntil > now ? ` · ${Math.ceil((k.cooldownUntil - now) / 1000)}초 휴식` : '';
+        return `
+        <div class="p-3 bg-white border ${k.enabled ? 'border-soft-border' : 'border-dashed border-slate-300 opacity-60'} rounded-2xl" data-id="${k.id}">
+            <div class="flex items-center gap-2 flex-wrap">
+                <div class="flex flex-col -my-1">
+                    <button data-k="up" title="위로" class="text-[10px] text-slate-400 hover:text-indigo-500 ${i === 0 ? 'invisible' : ''}"><i class="fa-solid fa-chevron-up"></i></button>
+                    <button data-k="down" title="아래로" class="text-[10px] text-slate-400 hover:text-indigo-500 ${i === state.keys.length - 1 ? 'invisible' : ''}"><i class="fa-solid fa-chevron-down"></i></button>
+                </div>
+                <span class="text-[11px] font-bold text-slate-400 w-5">#${i + 1}</span>
+                <label class="flex items-center cursor-pointer" title="사용 켜기/끄기">
+                    <input type="checkbox" data-k="enabled" ${k.enabled ? 'checked' : ''} class="w-4 h-4 text-indigo-600 rounded border-slate-300">
+                </label>
+                <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-600">${PROVIDERS[k.provider].label}</span>
+                <input data-k="label" value="${esc(k.label)}" placeholder="이름표" class="w-24 bg-transparent border-b border-transparent hover:border-slate-200 focus:border-indigo-300 text-xs font-semibold outline-none">
+                <code class="text-[11px] text-soft-subtext">${esc(maskKey(k.key))}</code>
+                <span class="text-[10px] px-1.5 py-0.5 rounded-md ${cls}">${txt}${cool}</span>
+                <span class="flex-1"></span>
+                <button data-k="test" title="이 키 테스트" class="w-7 h-7 rounded-lg text-soft-subtext hover:text-indigo-600 hover:bg-indigo-50"><i class="fa-solid fa-plug text-[11px]"></i></button>
+                <button data-k="del" title="삭제" class="w-7 h-7 rounded-lg text-soft-subtext hover:text-red-500 hover:bg-red-50"><i class="fa-regular fa-trash-can text-[11px]"></i></button>
+            </div>
+            <div class="flex items-center gap-2 mt-2 pl-[52px]">
+                <span class="text-[10px] text-soft-subtext">모델</span>
+                <input data-k="model" list="modelList-${k.provider}" value="${esc(k.model)}" class="flex-1 bg-slate-50 border border-slate-100 rounded-lg px-2 py-1 text-[11px] font-mono outline-none focus:border-indigo-300">
+                <span class="text-[10px] text-soft-subtext whitespace-nowrap">성공 ${k.okCount || 0} · 실패 ${k.failCount || 0}</span>
+            </div>
+            ${k.lastError && k.status !== 'ok' ? `<p class="text-[10px] text-red-400 mt-1.5 pl-[52px] truncate" title="${esc(k.lastError)}">${esc(k.lastError)}</p>` : ''}
+        </div>`;
+    }).join('') + Object.keys(PROVIDERS).map(p => `<datalist id="modelList-${p}">${PROVIDERS[p].models.map(m => `<option value="${m}">`).join('')}</datalist>`).join('');
+}
+
+$('keyList').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-k]'); if (!btn) return;
+    const row = btn.closest('[data-id]'); const k = state.keys.find(x => x.id === row.dataset.id); if (!k) return;
+    const i = state.keys.indexOf(k);
+    if (btn.dataset.k === 'up' && i > 0) { state.keys.splice(i, 1); state.keys.splice(i - 1, 0, k); }
+    if (btn.dataset.k === 'down' && i < state.keys.length - 1) { state.keys.splice(i, 1); state.keys.splice(i + 1, 0, k); }
+    if (btn.dataset.k === 'del') { if (!confirm(`${keyLabel(k)} 키를 삭제할까요?`)) return; state.keys.splice(i, 1); }
+    if (btn.dataset.k === 'test') { await testKey(k); return; }
+    saveKeys(); renderKeyList();
+});
+$('keyList').addEventListener('change', (e) => {
+    const el = e.target.closest('[data-k]'); if (!el) return;
+    const k = state.keys.find(x => x.id === el.closest('[data-id]').dataset.id); if (!k) return;
+    if (el.dataset.k === 'enabled') k.enabled = el.checked;
+    if (el.dataset.k === 'label') k.label = el.value.trim();
+    if (el.dataset.k === 'model') {
+        k.model = el.value.trim() || PROVIDERS[k.provider].defaultModel;
+        if (k.status === 'invalid' || k.status === 'error') { k.status = 'idle'; k.cooldownUntil = 0; k.lastError = ''; }
+    }
+    saveKeys(); renderKeyList();
+});
+
+async function testKey(k) {
+    k.status = 'testing'; renderKeyList();
+    try {
+        const reply = await callProvider(k, { system: 'Reply with exactly: OK', user: 'ping' }, { temperature: 0, json: false, timeoutMs: 30000 });
+        if (!reply.trim()) throw new Error('빈 응답');
+        markKey(k, 'ok');
+        return true;
+    } catch (err) {
+        markKey(k, err instanceof SyntaxError ? 'error' : classifyError(err), err);
+        return false;
+    }
+}
+
+$('btnTestAll').onclick = async () => {
+    if (!state.keys.length) { toast('테스트할 키가 없어요.', true); return; }
+    const targets = state.keys.filter(k => k.enabled);
+    const results = await Promise.all(targets.map(testKey));
+    renderKeyList();
+    if (!results.some(Boolean) && targets.every(k => /도달하지 못함/.test(k.lastError))) { showEnvBanner(true); toast(friendlyError({ network: true }), true); return; }
+    toast(`테스트 완료 · 정상 ${results.filter(Boolean).length}개 / ${targets.length}개`);
+};
+$('btnResetStatus').onclick = () => {
+    state.keys.forEach(k => { k.status = 'idle'; k.cooldownUntil = 0; k.lastError = ''; });
+    saveKeys(); renderKeyList(); toast('모든 키를 다시 사용 후보로 되돌렸어요');
+};
+
+$('btnAddKey').onclick = () => {
+    const keys = $('s-key').value.split(/[\s,;]+/).map(x => x.trim()).filter(x => x.length > 8);
+    if (!keys.length) { toast('API 키를 입력해 주세요.', true); $('s-key').focus(); return; }
+    const model = $('s-model').value.trim() || PROVIDERS[draftProvider].defaultModel;
+    const label = $('s-label').value.trim();
+    let added = 0, dup = 0;
+    keys.forEach((key, n) => {
+        if (state.keys.some(k => k.key === key && k.provider === draftProvider)) { dup++; return; }
+        state.keys.push(newKeyEntry(draftProvider, key, model, label ? (keys.length > 1 ? `${label} ${n + 1}` : label) : ''));
+        added++;
+    });
+    saveKeys(); renderKeyList();
+    $('s-key').value = ''; $('s-label').value = '';
+    toast(`${added}개 키를 추가했어요${dup ? ` (중복 ${dup}개 제외)` : ''}`);
+};
+
+let modelTimer = null;
+function openSettings() {
+    const s = state.settings;
+    paintProvider(draftProvider);
+    if (!$('s-model').value) $('s-model').value = PROVIDERS[draftProvider].defaultModel;
+    $('s-lang').value = s.lang;
+    $('s-examples').value = String(s.examples);
+    $('s-remember').checked = !!s.remember;
+    $('s-rotate').checked = !!s.rotate;
+    $('s-fallback').checked = s.modelFallback !== false;
+    renderKeyList();
+    openModal('settingsModal');
+    clearInterval(modelTimer);   // 휴식 남은 시간 표시 갱신
+    modelTimer = setInterval(() => {
+        if ($('settingsModal').classList.contains('hidden')) { clearInterval(modelTimer); return; }
+        if (state.keys.some(k => k.cooldownUntil > Date.now()) && !$('keyList').contains(document.activeElement)) renderKeyList();
+    }, 1000);
+    setTimeout(() => { if (!state.keys.length) $('s-key').focus(); }, 50);
+}
+
+function updateApiBadge() {
+    const total = state.keys.length, usable = usableKeys().length;
+    $('apiBadge').innerHTML = !total
+        ? 'API 설정 <span class="text-red-500">(미연결)</span>'
+        : `API 키 ${total}개 · <span class="${usable ? 'text-emerald-600' : 'text-red-500'}">사용 가능 ${usable}</span>`;
+}
+
+$('btnApiSettings').onclick = openSettings;
+$('btnSaveSettings').onclick = () => {
+    if ($('s-key').value.trim() && confirm('입력칸에 아직 추가하지 않은 키가 있어요. 목록에 추가할까요?')) $('btnAddKey').click();
+    state.settings.lang = $('s-lang').value;
+    state.settings.examples = Number($('s-examples').value);
+    state.settings.rotate = $('s-rotate').checked;
+    state.settings.modelFallback = $('s-fallback').checked;
+    state.settings.remember = $('s-remember').checked;
+    safeLS.set(LS.settings, JSON.stringify(state.settings));
+    saveKeys();
+    closeModal('settingsModal');
+    toast('설정을 저장했어요');
+};
+$('toggleKey').onclick = () => {
+    const i = $('s-key'); const hidden = i.style.webkitTextSecurity !== 'none';
+    i.style.webkitTextSecurity = hidden ? 'none' : 'disc';
+    $('toggleKey').innerHTML = `<i class="fa-regular ${hidden ? 'fa-eye-slash' : 'fa-eye'}"></i>`;
+};
+
+$('btnListModels').onclick = async () => {
+    const key = $('s-key').value.split(/[\s,;]+/).find(x => x.length > 8) || state.keys.find(k => k.provider === 'gemini')?.key;
+    if (!key) { toast('Gemini 키를 입력하거나 먼저 등록해 주세요.', true); return; }
+    try {
+        const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': key } });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
+        const names = (data.models || [])
+            .filter(m => (m.supportedGenerationMethods || []).includes('generateContent') && /gemini/.test(m.name) && !/tts|image|embedding|audio|live/i.test(m.name))
+            .map(m => m.name.replace(/^models\//, ''));
+        PROVIDERS.gemini.models = names;
+        $('modelList').innerHTML = names.map(n => `<option value="${n}">`).join('');
+        renderKeyList();
+        toast(`${names.length}개 모델을 찾았어요. 모델 칸을 클릭해 선택하세요.`);
+        $('s-model').focus();
+    } catch (err) { toast(friendlyError(err), true); }
+};
+
+/* =========================================================
+   테마
+   ========================================================= */
+function applyTheme(dark) {
+    document.documentElement.classList.toggle('dark', dark);
+    $('btnTheme').innerHTML = `<i class="${dark ? 'fa-solid fa-sun text-amber-400' : 'fa-regular fa-moon'}"></i>`;
+    safeLS.set(LS.theme, dark ? 'dark' : 'light');
+}
+$('btnTheme').onclick = () => applyTheme(!document.documentElement.classList.contains('dark'));
+
+/* =========================================================
+   이벤트 연결
+   ========================================================= */
+$('btnGenerate').onclick = generate;
+$('btnRefine').onclick = refine;
+$('refineInput').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing && !e.ctrlKey && !e.metaKey) refine(); });
+$('viewStructured').onclick = () => setView('structured');
+$('viewFull').onclick = () => setView('full');
+$('btnCopy').onclick = () => copyText(currentText(), state.type === 'skill' ? 'SKILL.md 내용을 복사했어요' : '지침을 복사했어요 — Gem 지침 칸에 붙여넣으세요');
+$('btnDownload').onclick = () => {
+    const text = currentText();
+    if (!text) { toast('다운로드할 내용이 없습니다.', true); return; }
+    const f = state.type === 'skill' ? 'SKILL.md' : `${(state.result?.slug || 'instructions')}.md`;
+    download(f, text);
+};
+$('btnSave').onclick = saveTemplate;
+$('btnSaved').onclick = () => { renderSavedList(); openModal('savedModal'); };
+
+$('fullText').addEventListener('input', () => {
+    if (!state.result) return;
+    state.fullEdited = $('fullText').value !== buildFullText();
+    $('editedNote').classList.toggle('hidden', !state.fullEdited);
+    updateTokens();
+});
+
+$('btnReset').onclick = () => {
+    if ((getForm().name || state.result) && !confirm('입력한 내용과 생성된 지침을 모두 초기화할까요?')) return;
+    setForm({ type: 'gem', rules: ['friendly', 'stepwise', 'markdown'], format: 'summary', strict: 'normal' });
+    state.result = null; state.fullEdited = false;
+    $('fullText').value = '';
+    $('previewBody').innerHTML = INITIAL_PREVIEW;
+    $('refineBar').classList.add('hidden');
+    $('editedNote').classList.add('hidden');
+    setView('structured');
+    setStatus('프레임 준비 완료 (지침 생성 대기 중)');
+    updateTokens();
+    saveDraft();
+};
+
+document.querySelectorAll('.preset').forEach(el => el.onclick = () => {
+    const p = PRESETS[Number(el.dataset.preset)];
+    if (state.result && !confirm('현재 생성된 지침은 사라집니다. 템플릿 양식을 불러올까요?')) return;
+    state.result = null; state.fullEdited = false; $('fullText').value = '';
+    $('previewBody').innerHTML = INITIAL_PREVIEW; $('refineBar').classList.add('hidden');
+    setForm(p);
+    setStatus(`"${p.name}" 양식을 불러왔어요 — 생성 버튼을 눌러 주세요`);
+    updateTokens();
+    toast(`"${p.name}" 양식을 불러왔어요`);
+});
+
+['f-name', 'f-target', 'f-purpose', 'f-extra', 'f-format', 'f-strict'].forEach(id => $(id).addEventListener('change', saveDraft));
+document.querySelectorAll('.rule-cb').forEach(c => c.addEventListener('change', saveDraft));
+
+/* =========================================================
+   초기화
+   ========================================================= */
+(function init() {
+    applyTheme(safeLS.get(LS.theme) === 'dark');
+    try {
+        const s = JSON.parse(safeLS.get(LS.settings) || 'null');
+        if (s && PROVIDERS[s.provider]) state.settings = Object.assign(state.settings, s);
+    } catch {}
+    if (IN_FRAME) showEnvBanner(false);
+    state.keys = loadKeys();
+    draftProvider = state.keys[0]?.provider || 'gemini';
+    if (state.keys.length) saveKeys();   // 이전 버전 데이터 이전 반영
+    updateApiBadge();
+    updateSavedCount();
+
+    $('typeHint').textContent = TYPE_INFO.gem.hint;
+    try {
+        const d = JSON.parse(safeLS.get(LS.draft) || 'null');
+        if (d?.form) setForm(d.form);
+        if (d?.result) { state.result = d.result; renderAll(); setStatus('이전 작업을 복원했어요', 'done'); }
+    } catch {}
+    updateTokens();
+})();
+</script>
+</body>
+</html>
