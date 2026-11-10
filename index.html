@@ -332,6 +332,11 @@
                             <button id="viewStructured" class="px-3 py-1 rounded-lg bg-white font-medium shadow-sm text-indigo-600">구조화 뷰</button>
                             <button id="viewFull" class="px-3 py-1 rounded-lg text-soft-subtext hover:text-soft-text">전체 텍스트</button>
                         </div>
+                        <div class="bg-slate-100 p-1 rounded-xl flex items-center text-xs" title="프롬프트 글씨 크기">
+                            <button id="fontDown" title="글씨 작게" class="w-7 h-6 rounded-lg text-soft-subtext hover:bg-white hover:text-soft-text disabled:opacity-40 disabled:hover:bg-transparent"><span class="text-[10px] font-semibold">가</span><i class="fa-solid fa-minus text-[8px] ml-px"></i></button>
+                            <button id="fontReset" title="기본 크기로" class="min-w-[42px] h-6 px-1 rounded-lg text-[11px] font-medium text-soft-subtext hover:bg-white tabular-nums">100%</button>
+                            <button id="fontUp" title="글씨 크게" class="w-7 h-6 rounded-lg text-soft-subtext hover:bg-white hover:text-soft-text disabled:opacity-40 disabled:hover:bg-transparent"><span class="text-[13px] font-semibold">가</span><i class="fa-solid fa-plus text-[8px] ml-px"></i></button>
+                        </div>
                         <button id="btnSave" title="템플릿으로 저장" class="w-8 h-8 rounded-xl bg-pink-50 text-pink-600 hover:bg-pink-100 text-xs transition flex items-center justify-center">
                             <i class="fa-regular fa-bookmark"></i>
                         </button>
@@ -1893,6 +1898,30 @@ $('btnTheme').onclick = () => applyTheme(!document.documentElement.classList.con
 $('btnGenerate').onclick = generate;
 $('btnRefine').onclick = refine;
 $('refineInput').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing && !e.ctrlKey && !e.metaKey) refine(); });
+/* 프롬프트 글씨 크기 (구조화 뷰 + 전체 텍스트 모두 적용, 브라우저에 기억) */
+const FONT_STEPS = [80, 90, 100, 110, 125, 140, 160];
+let fontScale = Number(safeLS.get('gss.fontScale')) || 100;
+if (!FONT_STEPS.includes(fontScale)) fontScale = 100;
+function applyFontScale() {
+    const s = fontScale / 100;
+    $('previewBody').style.zoom = s;                       // 카드 안의 모든 글씨·여백을 비율대로
+    $('previewBody').style.maxHeight = `calc((100vh - 320px) / ${s})`;   // zoom이 높이까지 키우지 않도록 보정
+    $('fullText').style.fontSize = (12 * s) + 'px';        // 기본 text-xs = 12px
+    $('fontReset').textContent = fontScale + '%';
+    $('fontDown').disabled = fontScale === FONT_STEPS[0];
+    $('fontUp').disabled = fontScale === FONT_STEPS[FONT_STEPS.length - 1];
+    safeLS.set('gss.fontScale', String(fontScale));
+}
+function stepFont(dir) {
+    const i = FONT_STEPS.indexOf(fontScale) + dir;
+    if (i < 0 || i >= FONT_STEPS.length) return;
+    fontScale = FONT_STEPS[i]; applyFontScale();
+}
+$('fontDown').onclick = () => stepFont(-1);
+$('fontUp').onclick = () => stepFont(1);
+$('fontReset').onclick = () => { fontScale = 100; applyFontScale(); };
+applyFontScale();
+
 $('viewStructured').onclick = () => setView('structured');
 $('viewFull').onclick = () => setView('full');
 $('btnCopy').onclick = () => copyText(currentText(), state.type === 'skill' ? 'SKILL.md 내용을 복사했어요' : '지침을 복사했어요 — Gem 지침 칸에 붙여넣으세요');
