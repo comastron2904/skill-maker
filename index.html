@@ -104,6 +104,15 @@
         html.dark .bg-red-50 { background-color: rgba(239, 68, 68, .14) !important; }
         html.dark .shimmer { background: linear-gradient(90deg, #1e293b 0%, #334155 50%, #1e293b 100%); background-size: 200% 100%; }
         html.dark ::-webkit-scrollbar-thumb { background: #475569; }
+        .refine-chip {
+            font-size: 11px; line-height: 1; padding: 6px 10px; border-radius: 9999px;
+            background: #fff; border: 1px solid #e2e8f0; color: #475569;
+            transition: border-color .15s, background-color .15s, color .15s;
+        }
+        .refine-chip:hover:not(:disabled) { border-color: #a5b4fc; background: #eef2ff; color: #4338ca; }
+        .refine-chip:disabled { opacity: .5; cursor: not-allowed; }
+        .refine-chip-accent { border-color: #c7d2fe; background: #eef2ff; color: #4f46e5; font-weight: 600; }
+        .refine-chip-accent:hover:not(:disabled) { background: #e0e7ff; }
     </style>
 </head>
 <body class="text-soft-text antialiased min-h-screen flex flex-col p-4 md:p-6 lg:p-8">
@@ -414,12 +423,24 @@
                 </div>
 
                 <!-- Refine bar -->
-                <div id="refineBar" class="hidden flex gap-2">
+                <div id="refineBar" class="hidden space-y-2">
+                <div id="refineChips" class="flex flex-wrap gap-1.5">
+                    <span class="text-[11px] text-soft-subtext self-center mr-0.5"><i class="fa-solid fa-bolt mr-1 text-amber-400"></i>원클릭 다듬기</span>
+                    <button data-chip="specific" class="refine-chip">더 구체적으로</button>
+                    <button data-chip="edge" class="refine-chip">예외 상황 대비</button>
+                    <button data-chip="example" class="refine-chip">예시 하나 더</button>
+                    <button data-chip="prohibit" class="refine-chip">금지사항 강화</button>
+                    <button data-chip="easy" class="refine-chip">더 쉬운 말로</button>
+                    <button data-chip="short" class="refine-chip">더 짧고 간결하게</button>
+                    <button data-chip="review" class="refine-chip refine-chip-accent"><i class="fa-solid fa-stethoscope mr-1"></i>품질 점검</button>
+                </div>
+                <div class="flex gap-2">
                     <input id="refineInput" type="text" placeholder="수정 요청 (예: 예시를 3개로 늘리고, 금지사항에 개인정보 요청 금지 추가)"
                         class="flex-1 bg-white border border-soft-border focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 rounded-xl px-3.5 py-2 text-xs transition outline-none shadow-soft-inner">
                     <button id="btnRefine" class="px-3.5 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-medium transition flex items-center gap-1.5 disabled:opacity-60">
                         <i class="fa-solid fa-arrows-rotate"></i><span>다듬기</span>
                     </button>
+                </div>
                 </div>
 
                 <div class="pt-2 flex items-center justify-between text-xs text-soft-subtext gap-2">
@@ -533,6 +554,10 @@
 
             <div class="space-y-2">
                 <label class="flex items-start gap-2 text-xs text-soft-text cursor-pointer">
+                    <input id="s-selfcheck" type="checkbox" checked class="mt-0.5 w-4 h-4 text-indigo-600 rounded border-slate-300">
+                    <span>생성 후 자동 품질 점검 <span class="text-soft-subtext">(막연한 표현·규칙 충돌·예시 오류를 AI가 한 번 더 검토해 고쳐요. 결과가 좋아지는 대신 시간과 API 사용량이 약 2배)</span></span>
+                </label>
+                <label class="flex items-start gap-2 text-xs text-soft-text cursor-pointer">
                     <input id="s-fallback" type="checkbox" checked class="mt-0.5 w-4 h-4 text-indigo-600 rounded border-slate-300">
                     <span>서버 혼잡·한도 초과 시 대체 모델로 자동 전환 <span class="text-soft-subtext">(예: gemini-flash-latest → 2.5-flash → flash-lite → 2.5-pro)</span></span>
                 </label>
@@ -563,7 +588,7 @@
     </div>
 
     <!-- TOAST -->
-    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 translate-y-4 opacity-0 pointer-events-none z-[60] px-4 py-2.5 rounded-xl bg-slate-800 text-white text-xs shadow-soft-lg"></div>
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 translate-y-4 opacity-0 pointer-events-none z-[60] px-4 py-2.5 whitespace-pre-line max-w-[min(90vw,28rem)] rounded-xl bg-slate-800 text-white text-xs shadow-soft-lg"></div>
 
 <script>
 /* =========================================================
@@ -661,7 +686,7 @@ function toast(msg, isError = false) {
     t.classList.toggle('bg-slate-800', !isError);
     t.classList.remove('opacity-0', 'translate-y-4');
     clearTimeout(t._timer);
-    t._timer = setTimeout(() => t.classList.add('opacity-0', 'translate-y-4'), isError ? 4200 : 2200);
+    t._timer = setTimeout(() => t.classList.add('opacity-0', 'translate-y-4'), isError ? 4200 : (msg.includes('\n') ? 6500 : 2200));
 }
 
 function selectType(selectedBtn) {
@@ -851,6 +876,49 @@ ${instruction}
 수정 요청을 반영해 같은 스키마의 완전한 JSON 전체를 다시 출력하라. 요청과 무관한 부분은 최대한 유지하라.`;
     return { system: base.system, user };
 }
+
+/* 자동 품질 점검: 생성된 지침을 체크리스트로 검토하고 고친 JSON + 수정 내역을 받는다 */
+function buildReviewPrompt() {
+    const base = buildMetaPrompt(getForm());
+    const user =
+`${base.user}
+
+[검토할 지침 JSON]
+${JSON.stringify(state.result, null, 2)}
+
+[검토 작업]
+위 지침을 아래 체크리스트로 꼼꼼히 검토하고, 문제가 있는 부분만 고쳐라. 목적·역할·방향은 바꾸지 말고, 문제가 없는 항목은 그대로 둔다.
+1. 막연한 표현("적절히", "잘", "필요시", "가능하면", "간단히" 등)이 있으면 판단 기준·수치·예시가 있는 구체적 규칙으로 바꾼다.
+2. 서로 충돌하거나 중복되는 규칙을 찾아 하나로 정리한다.
+3. 위 요구사항(추가 요구사항, 톤앤매너, 출력 형식, 제약 엄격도, 참고 파일 용도)이 지침에 빠짐없이 반영됐는지 확인하고, 빠진 것은 넣는다.
+4. workflow가 실제 수행 순서대로이고, 각 단계가 실행 가능한 행동인지 확인한다.
+5. examples의 output이 principles·constraints.format·constraints.prohibited를 실제로 지키는지 확인하고, 어긋나면 예시를 고친다.
+6. 범위 밖 요청, 정보가 부족하거나 모호한 요청을 받았을 때의 대응 규칙이 없으면 추가한다.
+7. 항목 개수 제한(principles 4~7개 등)과 예시 개수는 원래 스키마를 지킨다.
+
+같은 스키마의 완전한 JSON 전체를 출력하되, 맨 앞에 "_review" 키를 추가해 실제로 고친 내용을 짧은 한 줄씩 배열로 적어라(고친 것이 없으면 빈 배열).`;
+    return { system: base.system, user };
+}
+function parseReview(text) {
+    const result = parseJSON(text);
+    let notes = [];
+    try {
+        const t = String(text);
+        const obj = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1));
+        if (Array.isArray(obj._review)) notes = obj._review.map(String).filter(Boolean);
+    } catch { /* parseJSON이 이미 성공했으므로 무시 */ }
+    return { result, notes };
+}
+
+/* 원클릭 다듬기 */
+const REFINE_CHIPS = {
+    specific: '막연한 표현을 모두 찾아 판단 기준·수치·예시가 있는 구체적 규칙으로 바꿔라.',
+    edge: '범위 밖 요청, 정보가 부족한 요청, 모호한 요청, 부적절한 요청을 받았을 때의 대응 규칙을 principles 또는 workflow에 추가하라.',
+    example: '입출력 예시를 1개 추가하라. 기존 예시와 겹치지 않는 상황(예외적이거나 까다로운 요청)을 다뤄라.',
+    prohibit: '이 역할에서 실제로 일어나기 쉬운 실수와 위험(사실 지어내기, 범위 이탈, 개인정보 등)을 따져 금지 사항을 보강하라. 기존 금지 사항은 더 구체적으로 다듬어라.',
+    easy: '타겟 사용자가 이 분야 초보자라고 가정하고, 응답에서 쉬운 말을 쓰고 전문 용어는 풀어 설명하는 규칙을 강화하라. 예시 응답도 그에 맞게 고쳐라.',
+    short: '전체 지침을 핵심만 남겨 짧게 줄여라. 중복 규칙은 합치고, 각 항목은 한 문장 이내로, 예시 응답도 간결하게.'
+};
 
 /* =========================================================
    AI API 호출
@@ -1303,6 +1371,7 @@ function setBusy(b, label) {
     state.busy = b;
     $('btnGenerate').disabled = b;
     $('btnRefine').disabled = b;
+    document.querySelectorAll('.refine-chip').forEach(c => c.disabled = b);
     $('genIcon').className = b ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-wand-magic-sparkles';
     $('genLabel').textContent = b ? (label || '생성 중...') : '지침 프롬프트 자동 생성';
 }
@@ -1334,10 +1403,17 @@ async function generate() {
     try {
         state.result = await callAI(buildMetaPrompt(form), { temperature: STRICT[form.strict].temp, parse: parseJSON, onAttempt: attemptStatus('지침 생성 중') });
         state.fullEdited = false;
+        let reviewMsg = '';
+        if (state.settings.selfCheck !== false) {
+            renderAll();   // 점검하는 동안 초안을 먼저 보여 준다
+            $('genLabel').textContent = '품질 점검 중...';
+            const rv = await runReview();
+            reviewMsg = rv === null ? ' · 점검 건너뜀' : (rv.length ? ` · 점검으로 ${rv.length}곳 보완` : ' · 점검 통과');
+        }
         renderAll();
         saveDraft();
-        setStatus(`생성 완료 · ${((performance.now() - t0) / 1000).toFixed(1)}초 · ${keyLabel(state.lastUsedKey)} · ${state.lastUsedModel}`, 'done');
-        toast('지침이 생성되었어요 ✨');
+        setStatus(`생성 완료${reviewMsg} · ${((performance.now() - t0) / 1000).toFixed(1)}초 · ${keyLabel(state.lastUsedKey)} · ${state.lastUsedModel}`, 'done');
+        toast('지침이 생성되었어요 ✨' + (reviewMsg ? reviewMsg.replace(' · ', ' (') + ')' : ''));
     } catch (err) {
         console.error(err);
         $('previewBody').innerHTML = prevHTML;
@@ -1348,9 +1424,49 @@ async function generate() {
     }
 }
 
-async function refine() {
+/* 품질 점검 1회 실행. 성공 시 수정 내역 배열, 실패 시 null(기존 결과 유지) */
+async function runReview() {
+    setStatus('품질 점검 중...', 'busy');
+    try {
+        const { result, notes } = await callAI(buildReviewPrompt(), { temperature: 0.3, parse: parseReview, onAttempt: attemptStatus('품질 점검 중') });
+        state.result = result;
+        state.reviewNotes = notes;
+        return notes;
+    } catch (err) {
+        console.error(err);
+        toast('품질 점검에 실패해 점검 전 결과를 보여 드려요. ' + friendlyError(err), true);
+        return null;
+    }
+}
+
+async function reviewNow() {
     if (state.busy || !state.result) return;
-    const instr = $('refineInput').value.trim();
+    if (state.fullEdited && !confirm('전체 텍스트에서 직접 수정한 내용은 점검 결과로 덮어써집니다. 계속할까요?')) return;
+    setBusy(true, '품질 점검 중...');
+    try {
+        const notes = await runReview();
+        if (notes === null) { setStatus('점검 실패', 'error'); return; }
+        state.fullEdited = false;
+        renderAll();
+        saveDraft();
+        setStatus(notes.length ? `점검 완료 · ${notes.length}곳 보완` : '점검 완료 · 고칠 곳 없음', 'done');
+        toast(notes.length ? '보완한 내용:\n· ' + notes.slice(0, 5).join('\n· ') : '점검 결과 고칠 곳이 없었어요 👍');
+    } finally {
+        setBusy(false);
+    }
+}
+
+$('refineChips').addEventListener('click', (e) => {
+    const chip = e.target.closest('.refine-chip');
+    if (!chip || chip.disabled) return;
+    if (chip.dataset.chip === 'review') { reviewNow(); return; }
+    const typed = $('refineInput').value.trim();
+    refine(REFINE_CHIPS[chip.dataset.chip] + (typed ? ' 추가로: ' + typed : ''));
+});
+
+async function refine(preset) {
+    if (state.busy || !state.result) return;
+    const instr = typeof preset === 'string' ? preset : $('refineInput').value.trim();
     if (!instr) { $('refineInput').focus(); return; }
     if (state.fullEdited && !confirm('전체 텍스트에서 직접 수정한 내용은 다듬기 결과로 덮어써집니다. 계속할까요?')) return;
     setBusy(true, '다듬는 중...');
@@ -1671,6 +1787,7 @@ function openSettings() {
     $('s-examples').value = String(s.examples);
     $('s-rotate').checked = !!s.rotate;
     $('s-fallback').checked = s.modelFallback !== false;
+    $('s-selfcheck').checked = s.selfCheck !== false;
     renderKeyList();
     openModal('settingsModal');
     clearInterval(modelTimer);   // 휴식 남은 시간 표시 갱신
@@ -1695,6 +1812,7 @@ $('btnSaveSettings').onclick = () => {
     state.settings.examples = Number($('s-examples').value);
     state.settings.rotate = $('s-rotate').checked;
     state.settings.modelFallback = $('s-fallback').checked;
+    state.settings.selfCheck = $('s-selfcheck').checked;
     state.settings.remember = true;
     safeLS.set(LS.settings, JSON.stringify(state.settings));
     saveKeys();
