@@ -272,6 +272,23 @@
                                 <input id="f-files" type="checkbox" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-400">
                                 <span class="ml-2.5 text-xs font-medium text-soft-text"><i class="fa-solid fa-paperclip mr-1 text-indigo-400"></i>참고 파일 추가 <span class="text-soft-subtext font-normal">(지식 파일을 첨부해 두고 쓸 예정)</span></span>
                             </label>
+                            <div id="f-fileuse-wrap" class="hidden">
+                                <span class="text-xs font-medium text-soft-subtext block mb-1">이 파일을 어떻게 쓰나요?</span>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <label class="fileuse-opt flex flex-col p-2.5 bg-white border border-soft-border rounded-xl cursor-pointer hover:border-indigo-200 transition">
+                                        <span class="flex items-center"><input type="radio" name="f-fileuse" value="knowledge" checked class="w-3.5 h-3.5 text-indigo-600 border-slate-300 focus:ring-indigo-400"><span class="ml-1.5 text-xs font-semibold text-soft-text"><i class="fa-solid fa-book-open mr-1 text-indigo-400"></i>내용 근거</span></span>
+                                        <span class="mt-1 text-[10.5px] leading-snug text-soft-subtext">파일 내용을 바탕으로 답을 구성</span>
+                                    </label>
+                                    <label class="fileuse-opt flex flex-col p-2.5 bg-white border border-soft-border rounded-xl cursor-pointer hover:border-indigo-200 transition">
+                                        <span class="flex items-center"><input type="radio" name="f-fileuse" value="template" class="w-3.5 h-3.5 text-indigo-600 border-slate-300 focus:ring-indigo-400"><span class="ml-1.5 text-xs font-semibold text-soft-text"><i class="fa-solid fa-table-list mr-1 text-indigo-400"></i>형식 틀</span></span>
+                                        <span class="mt-1 text-[10.5px] leading-snug text-soft-subtext">파일 양식에 맞춰 채워 넣기</span>
+                                    </label>
+                                    <label class="fileuse-opt flex flex-col p-2.5 bg-white border border-soft-border rounded-xl cursor-pointer hover:border-indigo-200 transition">
+                                        <span class="flex items-center"><input type="radio" name="f-fileuse" value="both" class="w-3.5 h-3.5 text-indigo-600 border-slate-300 focus:ring-indigo-400"><span class="ml-1.5 text-xs font-semibold text-soft-text"><i class="fa-solid fa-layer-group mr-1 text-indigo-400"></i>둘 다</span></span>
+                                        <span class="mt-1 text-[10.5px] leading-snug text-soft-subtext">자료 파일 + 양식 파일 함께</span>
+                                    </label>
+                                </div>
+                            </div>
                             <input id="f-filedesc" type="text" placeholder="어떤 파일인가요? (예: 학교 규정집 PDF, 평가 기준표)"
                                 class="hidden w-full bg-white border border-soft-border focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 rounded-xl px-4 py-2.5 text-xs transition outline-none shadow-soft-inner">
                         </div>
@@ -677,6 +694,7 @@ function getForm() {
         format: $('f-format').value,
         strict: $('f-strict').value,
         files: $('f-files').checked,
+        fileUse: getFileUse(),
         fileDesc: $('f-filedesc').value.trim()
     };
 }
@@ -692,12 +710,55 @@ function setForm(f) {
     $('f-format').value = f.format || 'summary';
     $('f-strict').value = f.strict || 'normal';
     $('f-files').checked = !!f.files;
+    setFileUse(f.fileUse || 'knowledge');
     $('f-filedesc').value = f.fileDesc || '';
     syncFileDesc();
     saveDraft();
 }
 
-function syncFileDesc() { $('f-filedesc').classList.toggle('hidden', !$('f-files').checked); }
+/* 참고 파일 용도: knowledge(내용 근거) / template(형식 틀) / both */
+const FILE_USE_PLACEHOLDER = {
+    knowledge: '어떤 자료인가요? (예: 학교 규정집 PDF, 교과서 단원 요약)',
+    template: '어떤 양식인가요? (예: 가정통신문 양식, 수업지도안 서식 HWP)',
+    both: '자료와 양식을 구분해 적어 주세요 (예: 자료—학사 규정집 / 양식—공문 서식)'
+};
+function getFileUse() {
+    const r = document.querySelector('input[name="f-fileuse"]:checked');
+    return r ? r.value : 'knowledge';
+}
+function setFileUse(v) {
+    const r = document.querySelector(`input[name="f-fileuse"][value="${v}"]`) ||
+              document.querySelector('input[name="f-fileuse"][value="knowledge"]');
+    r.checked = true;
+    syncFileDesc();
+}
+function syncFileDesc() {
+    const on = $('f-files').checked;
+    $('f-filedesc').classList.toggle('hidden', !on);
+    $('f-fileuse-wrap').classList.toggle('hidden', !on);
+    const use = getFileUse();
+    $('f-filedesc').placeholder = FILE_USE_PLACEHOLDER[use];
+    document.querySelectorAll('.fileuse-opt').forEach(l => {
+        const sel = l.querySelector('input').checked;
+        l.classList.toggle('border-indigo-400', sel);
+        l.classList.toggle('bg-indigo-50', sel);
+        l.classList.toggle('bg-white', !sel);
+    });
+}
+
+function fileRulePrompt(form) {
+    if (!form.files) return '없음 — 파일 참조 관련 규칙은 넣지 않는다.';
+    const desc = form.fileDesc ? ' — ' + form.fileDesc : '';
+    const knowledge = '첨부 파일을 1순위 근거로 삼고, 파일에 없는 내용은 추측하지 말고 "파일에 없음"을 밝히며, 근거가 된 파일명을 함께 언급한다.';
+    const template = '첨부 파일의 구조(제목·항목 순서·표 칸·번호 체계·문체·분량)를 그대로 따르고, 각 칸을 사용자의 요청 내용으로 채운다. 양식에 원래 적힌 예시 문구나 내용은 사실 근거로 쓰지 않으며, 항목을 임의로 추가·삭제·순서 변경하지 않는다. 채울 정보가 부족한 칸은 지어내지 말고 [입력 필요]로 표시하거나 사용자에게 되묻는다.';
+    if (form.fileUse === 'template') {
+        return `있음 (용도: 형식 틀/양식)${desc}. 사용자가 이 Gem/Skill에 양식(템플릿) 파일을 첨부해 둔다. 이 파일은 내용의 근거가 아니라 결과물의 형식이다. 지침(principles/workflow/constraints)에 반드시 포함하라: ${template} constraints.format에는 "첨부 양식의 구조를 그대로 유지"를 1번 규칙으로 넣는다.`;
+    }
+    if (form.fileUse === 'both') {
+        return `있음 (용도: 내용 근거 + 형식 틀)${desc}. 사용자가 내용 근거가 되는 자료 파일과 결과물 형식이 되는 양식 파일을 함께 첨부해 둔다. 지침에 반드시 포함하라: 먼저 각 첨부 파일이 '자료'인지 '양식'인지 구분하고(애매하면 사용자에게 확인), 자료 파일에 대해서는 — ${knowledge} 양식 파일에 대해서는 — ${template} 즉 내용은 자료에서, 형식은 양식에서 가져와 결합한다.`;
+    }
+    return `있음 (용도: 내용 근거/지식 자료)${desc}. 사용자가 이 Gem/Skill에 지식 파일을 첨부해 둔다. 지침(principles/workflow/constraints)에 파일 활용 규칙을 반드시 포함하라: ${knowledge} 결과물의 형식은 파일을 따라 하지 말고 [출력 형식] 설정을 따른다.`;
+}
 function saveDraft() {
     safeLS.set(LS.draft, JSON.stringify({
         form: getForm(), result: state.result,
@@ -772,9 +833,7 @@ examples는 정확히 ${nEx}개.`;
 [톤앤매너/세부 규칙] ${form.rules.length ? form.rules.map(r => RULES[r]).join(' / ') : '(지정 없음)'}
 [출력 형식] ${FORMATS[form.format]}
 [제약 엄격도] ${STRICT[form.strict].text}
-[참고 파일] ${form.files
-        ? `있음${form.fileDesc ? ' — ' + form.fileDesc : ''}. 사용자가 이 Gem/Skill에 지식 파일을 첨부해 둔다. 지침(principles/workflow/constraints)에 파일 활용 규칙을 반드시 포함하라: 첨부 파일을 1순위 근거로 삼고, 파일에 없는 내용은 추측하지 말고 "파일에 없음"을 밝히며, 근거가 된 파일명을 함께 언급한다.`
-        : '없음 — 파일 참조 관련 규칙은 넣지 않는다.'}`;
+[참고 파일] ${fileRulePrompt(form)}`;
     return { system, user };
 }
 
@@ -1751,6 +1810,7 @@ $('btnReset').onclick = () => {
 
 ['f-name', 'f-target', 'f-purpose', 'f-extra', 'f-format', 'f-strict', 'f-files', 'f-filedesc'].forEach(id => $(id).addEventListener('change', saveDraft));
 $('f-files').addEventListener('change', () => { syncFileDesc(); if ($('f-files').checked) $('f-filedesc').focus(); });
+document.querySelectorAll('input[name="f-fileuse"]').forEach(r => r.addEventListener('change', () => { syncFileDesc(); saveDraft(); }));
 document.querySelectorAll('.rule-cb').forEach(c => c.addEventListener('change', saveDraft));
 ['f-name', 'f-target', 'f-purpose', 'f-extra', 'f-filedesc'].forEach(id => $(id).addEventListener('input', saveDraft));   // 타이핑 중에도 저장
 $('fullText').addEventListener('input', saveDraft);
