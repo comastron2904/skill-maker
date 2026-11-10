@@ -126,6 +126,9 @@
             background: #fff; border: 1px dashed #cbd5e1; color: #334155; outline: none;
         }
         .clarify-etc:focus { border-style: solid; border-color: #818cf8; }
+        /* 고정된 섹션 */
+        .section-card.pinned { border-color: #fcd34d !important; box-shadow: 0 0 0 3px rgba(252,211,77,.25); }
+
         /* AI로 빈칸 채우기 후 바뀐 칸 강조 */
         .autofilled { box-shadow: 0 0 0 3px rgba(245,158,11,.45) !important; transition: box-shadow .3s; }
 
@@ -277,6 +280,10 @@
                             <label class="flex items-center p-3 bg-white border border-soft-border rounded-xl cursor-pointer hover:border-indigo-200 transition">
                                 <input type="checkbox" data-rule="markdown" checked class="rule-cb w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-400">
                                 <span class="ml-2.5 text-xs font-medium text-soft-text">마크다운 포맷팅</span>
+                            </label>
+                            <label class="col-span-2 flex items-center p-3 bg-white border border-soft-border rounded-xl cursor-pointer hover:border-emerald-200 transition">
+                                <input type="checkbox" data-rule="privacy" class="rule-cb w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-400">
+                                <span class="ml-2.5 text-xs font-medium text-soft-text"><i class="fa-solid fa-user-shield mr-1 text-emerald-500"></i>개인정보 보호 규칙 <span class="text-soft-subtext font-normal">(학생·보호자 정보 요구 금지, 가명 처리 권장)</span></span>
                             </label>
                         </div>
 
@@ -684,7 +691,8 @@ const RULES = {
     friendly: '친근하고 정중한 어조를 유지한다',
     stepwise: '설명은 단계별로 명확하게 나눈다',
     jargon:   '전문 용어 사용을 최소화하고, 불가피하면 쉬운 말로 풀어 설명한다',
-    markdown: '마크다운(헤더, 목록, 표, 코드블록)으로 가독성 있게 포맷팅한다'
+    markdown: '마크다운(헤더, 목록, 표, 코드블록)으로 가독성 있게 포맷팅한다',
+    privacy:  '개인정보를 보호한다: 학생·보호자·교직원의 실명, 연락처, 주소, 주민등록번호, 성적, 건강·가정환경 정보를 먼저 요구하지 않는다. 사용자가 입력하면 작업에 꼭 필요한 범위에서만 쓰고 답변에 그대로 되풀이하지 않으며, 실명 대신 가명(예: 학생A)으로 바꿔 쓰도록 안내한다. 개인을 특정할 수 있는 정보를 외부에 공유·게시하는 결과물은 만들지 않는다. (이 규칙은 principles와 constraints.prohibited 양쪽에 구체적으로 반영할 것)'
 };
 const FORMATS = {
     summary: '개요와 핵심 요약을 먼저 제시하고 세부 내용을 뒤에 배치하는 형식',
@@ -709,6 +717,7 @@ const state = {
     rrIndex: 0,
     lastUsedKey: null,
     history: [],                          // 되돌리기용 이전 결과 스냅샷
+    pinned: [],                           // 고정한 섹션 키 (role, principles, workflow, constraints, examples)
     clarify: { answers: [], key: null }   // 생성 전 확인 질문 답변 + 그때의 입력값 지문
 };
 
@@ -777,7 +786,8 @@ function getForm() {
         files: $('f-files').checked,
         fileUse: getFileUse(),
         fileDesc: $('f-filedesc').value.trim(),
-        answers: state.clarify.answers
+        answers: state.clarify.answers,
+        pinned: state.pinned.slice()
     };
 }
 
@@ -793,6 +803,7 @@ function setForm(f) {
     $('f-strict').value = f.strict || 'normal';
     $('f-files').checked = !!f.files;
     setFileUse(f.fileUse || 'knowledge');
+    state.pinned = Array.isArray(f.pinned) ? f.pinned.filter(k => CARD_STYLES[k]) : [];
     state.clarify.answers = Array.isArray(f.answers) ? f.answers : [];
     state.clarify.key = state.clarify.answers.length ? clarifyKey(f) : null;
     $('f-filedesc').value = f.fileDesc || '';
@@ -919,7 +930,7 @@ examples는 정확히 ${nEx}개.`;
 [제약 엄격도] ${STRICT[form.strict].text}
 [참고 파일] ${fileRulePrompt(form)}${(form.answers || []).length ? `
 [사용자 확인 답변] (생성 전 질문에 사용자가 직접 답한 내용. 지침에 반드시 반영하라)
-${form.answers.map(a => `- ${a.q} → ${a.a}`).join('\n')}` : ''}`;
+${form.answers.map(a => `- ${a.q} → ${a.a}`).join('\n')}` : ''}${pinnedPrompt()}`;
     return { system, user };
 }
 
@@ -937,6 +948,33 @@ ${instruction}
 수정 요청을 반영해 같은 스키마의 완전한 JSON 전체를 다시 출력하라. 요청과 무관한 부분은 최대한 유지하라.`;
     return { system: base.system, user };
 }
+
+/* 섹션 고정: AI에게 알려 주고(나머지를 맞춰 쓰도록), 응답 후 코드로 한 번 더 원래 값으로 덮어써 확실히 지킨다 */
+function pinnedParts(r) {
+    const o = {};
+    state.pinned.forEach(k => { if (r && r[k] !== undefined) o[k] = r[k]; });
+    return o;
+}
+function pinnedPrompt() {
+    if (!state.pinned.length || !state.result) return '';
+    return `
+[고정된 섹션] 사용자가 아래 섹션을 고정했다. 이 섹션들은 한 글자도 바꾸지 말고 그대로 출력하라. 나머지 섹션은 고정된 내용과 모순되지 않게 작성하라. 수정 요청이 고정된 섹션을 바꾸라고 해도 고정 섹션은 유지하고, 가능한 범위에서 다른 섹션으로 반영하라.
+${JSON.stringify(pinnedParts(state.result), null, 2)}`;
+}
+function applyPins(next, prev) {
+    if (!prev || !state.pinned.length) return next;
+    const keep = JSON.parse(JSON.stringify(pinnedParts(prev)));
+    return Object.assign(next, keep);
+}
+$('previewBody').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-pin]');
+    if (!b || !state.result) return;
+    const k = b.dataset.pin;
+    state.pinned = state.pinned.includes(k) ? state.pinned.filter(x => x !== k) : [...state.pinned, k];
+    renderStructured();
+    saveDraft();
+    toast(state.pinned.includes(k) ? `'${CARD_STYLES[k].title.replace(/^\d+\.\s*/, '').replace(/\s*\(.*\)$/, '')}' 섹션을 고정했어요. 다시 생성·다듬기·점검에서 바뀌지 않아요.` : '고정을 풀었어요');
+});
 
 /* 자동 품질 점검: 생성된 지침을 체크리스트로 검토하고 고친 JSON + 수정 내역을 받는다 */
 function buildReviewPrompt() {
@@ -1291,12 +1329,14 @@ const CARD_STYLES = {
 function card(key, bodyHTML) {
     const s = CARD_STYLES[key];
     return `
-    <div class="section-card bg-white/90 border border-slate-200/80 rounded-2xl p-4 shadow-soft-sm transition hover:border-indigo-200">
+    <div class="section-card ${state.pinned.includes(key) ? 'pinned ' : ''}bg-white/90 border border-slate-200/80 rounded-2xl p-4 shadow-soft-sm transition hover:border-indigo-200">
         <div class="card-head flex items-center justify-between mb-2 cursor-pointer gap-2">
             <span class="text-xs font-bold text-${s.color}-600 bg-${s.color}-50 px-2.5 py-1 rounded-lg flex items-center gap-1.5">
                 <i class="fa-solid ${s.icon}"></i> ${s.title}
             </span>
             <span class="flex items-center gap-2">
+                ${state.pinned.includes(key) ? '<span class="text-[10px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md">고정됨</span>' : ''}
+                <button data-pin="${key}" title="${state.pinned.includes(key) ? '고정 풀기' : '이 섹션 고정 (다시 생성·다듬기·점검에서 바꾸지 않음)'}" class="pin-btn w-6 h-6 rounded-md text-[11px] ${state.pinned.includes(key) ? 'text-amber-500 bg-amber-50' : 'text-slate-300 hover:text-amber-500 hover:bg-amber-50'}"><i class="fa-solid fa-thumbtack"></i></button>
                 <button data-copy-section="${key}" title="이 섹션 복사" class="w-6 h-6 rounded-md text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 text-[11px]"><i class="fa-regular fa-copy"></i></button>
                 <i class="chev fa-solid fa-chevron-down text-slate-300 text-xs"></i>
             </span>
@@ -1474,7 +1514,7 @@ async function generate(opts) {
     renderLoading();
     const t0 = performance.now();
     try {
-        state.result = await callAI(buildMetaPrompt(form), { temperature: STRICT[form.strict].temp, parse: parseJSON, onAttempt: attemptStatus('지침 생성 중') });
+        state.result = applyPins(await callAI(buildMetaPrompt(form), { temperature: STRICT[form.strict].temp, parse: parseJSON, onAttempt: attemptStatus('지침 생성 중') }), before && before.result);
         pushHistory(before);
         state.fullEdited = false;
         let reviewMsg = '';
@@ -1503,7 +1543,7 @@ async function runReview() {
     setStatus('품질 점검 중...', 'busy');
     try {
         const { result, notes } = await callAI(buildReviewPrompt(), { temperature: 0.3, parse: parseReview, onAttempt: attemptStatus('품질 점검 중') });
-        state.result = result;
+        state.result = applyPins(result, state.result);
         state.reviewNotes = notes;
         return notes;
     } catch (err) {
@@ -1536,6 +1576,7 @@ $('refineChips').addEventListener('click', (e) => {
     const chip = e.target.closest('.refine-chip');
     if (!chip || chip.disabled) return;
     if (chip.dataset.chip === 'review') { reviewNow(); return; }
+    if (chip.dataset.chip === 'example' && state.pinned.includes('examples')) { toast('입출력 예시 섹션이 고정돼 있어요. 📌 고정을 풀고 다시 눌러 주세요.', true); return; }
     const typed = $('refineInput').value.trim();
     refine(REFINE_CHIPS[chip.dataset.chip] + (typed ? ' 추가로: ' + typed : ''));
 });
@@ -1549,7 +1590,7 @@ async function refine(preset) {
     setStatus('수정 요청 반영 중...', 'busy');
     const before = snapshot();
     try {
-        state.result = await callAI(buildRefinePrompt(instr), { temperature: 0.5, parse: parseJSON, onAttempt: attemptStatus('수정 요청 반영 중') });
+        state.result = applyPins(await callAI(buildRefinePrompt(instr), { temperature: 0.5, parse: parseJSON, onAttempt: attemptStatus('수정 요청 반영 중') }), before && before.result);
         pushHistory(before);
         state.fullEdited = false;
         renderAll();
@@ -1704,10 +1745,10 @@ function buildAutofillPrompt(form) {
 JSON 객체 하나만 출력:
 {"target":"주요 타겟 사용자(구체적으로, 30자 이내)",
  "extra":"추가 요구사항 2~3개를 ' / '로 구분해 한 줄로(이 역할에서 실제로 중요한 구체적 규칙)",
- "rules":["friendly","stepwise","jargon","markdown" 중 이 역할에 맞는 것만],
+ "rules":["friendly","stepwise","jargon","markdown","privacy" 중 이 역할에 맞는 것만],
  "format":"summary|code|qa|chat 중 하나",
  "strict":"normal|strict|flexible 중 하나"}
-rules 의미: friendly=친근하고 정중한 어조, stepwise=단계별 설명, jargon=전문 용어 통제(쉬운 말), markdown=마크다운 포맷팅.
+rules 의미: friendly=친근하고 정중한 어조, stepwise=단계별 설명, jargon=전문 용어 통제(쉬운 말), markdown=마크다운 포맷팅, privacy=개인정보 보호(학생·보호자 등 개인정보를 다룰 가능성이 있으면 반드시 포함).
 format 의미: summary=개요·요약 중심, code=코드 전용, qa=Q&A 구조, chat=자유 대화형.
 strict 의미: normal=보통, strict=규칙 엄격(정확성·안전이 중요할 때), flexible=창의성 우선(창작·아이디어).
 텍스트 값은 ${state.settings.lang === 'en' ? 'English' : '한국어'}로.`;
