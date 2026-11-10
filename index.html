@@ -126,23 +126,11 @@
             background: #fff; border: 1px dashed #cbd5e1; color: #334155; outline: none;
         }
         .clarify-etc:focus { border-style: solid; border-color: #818cf8; }
-
-        /* 시험 대화 */
-        .chat-bubble {
-            max-width: 85%; padding: 9px 13px; border-radius: 16px; font-size: 12.5px; line-height: 1.6;
-            white-space: pre-wrap; word-break: break-word;
-        }
-        .chat-user { background: #10b981; color: #fff; border-bottom-right-radius: 4px; }
-        .chat-bot { background: #fff; color: #334155; border: 1px solid #e2e8f0; border-bottom-left-radius: 4px; }
-        .chat-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
-
         /* AI로 빈칸 채우기 후 바뀐 칸 강조 */
         .autofilled { box-shadow: 0 0 0 3px rgba(245,158,11,.45) !important; transition: box-shadow .3s; }
 
         html.dark .refine-chip, html.dark .clarify-opt, html.dark .clarify-etc { background: #1e293b; border-color: #334155; color: #cbd5e1; }
         html.dark .refine-chip-accent, html.dark .clarify-opt.on { background: #312e81; border-color: #6366f1; color: #e0e7ff; }
-        html.dark .chat-bot { background: #1e293b; border-color: #334155; color: #cbd5e1; }
-        html.dark .chat-error { background: #450a0a; border-color: #7f1d1d; color: #fecaca; }
     </style>
 </head>
 <body class="text-soft-text antialiased min-h-screen flex flex-col p-4 md:p-6 lg:p-8">
@@ -375,9 +363,6 @@
                         </div>
                         <button id="btnUndo" title="이전 결과로 되돌리기" disabled class="h-8 px-2.5 rounded-xl bg-slate-100 text-soft-subtext hover:bg-slate-200 text-xs transition flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-100">
                             <i class="fa-solid fa-rotate-left"></i><span id="undoCount" class="text-[10px] tabular-nums"></span>
-                        </button>
-                        <button id="btnChat" title="이 지침으로 시험 대화 해 보기" class="h-8 px-2.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-medium transition flex items-center gap-1.5">
-                            <i class="fa-regular fa-comments"></i><span>시험 대화</span>
                         </button>
                         <button id="btnSave" title="템플릿으로 저장" class="w-8 h-8 rounded-xl bg-pink-50 text-pink-600 hover:bg-pink-100 text-xs transition flex items-center justify-center">
                             <i class="fa-regular fa-bookmark"></i>
@@ -642,30 +627,6 @@
         </div>
     </div>
 
-    <!-- TEST CHAT MODAL (시험 대화) -->
-    <div id="chatModal" class="hidden fixed inset-0 z-50 modal-backdrop flex items-center justify-center p-4">
-        <div class="glass-panel bg-white w-full max-w-2xl rounded-3xl border border-white/60 shadow-soft-lg p-6 flex flex-col gap-3 h-[min(85vh,760px)]">
-            <div class="flex items-start justify-between gap-2">
-                <div>
-                    <h2 class="text-sm font-bold flex items-center gap-2"><i class="fa-regular fa-comments text-emerald-500"></i> 시험 대화</h2>
-                    <p class="text-[11px] text-soft-subtext mt-1">지금 만든 지침을 적용한 AI와 대화해 봐요. 실제 사용자처럼 질문해 보세요.</p>
-                </div>
-                <div class="flex items-center gap-1 shrink-0">
-                    <button id="btnChatClear" class="text-[11px] px-2.5 py-1.5 rounded-lg bg-slate-100 text-soft-subtext hover:bg-slate-200"><i class="fa-solid fa-broom mr-1"></i>새 대화</button>
-                    <button data-close="chatModal" class="w-8 h-8 rounded-lg hover:bg-slate-50 text-soft-subtext"><i class="fa-solid fa-xmark"></i></button>
-                </div>
-            </div>
-            <div id="chatLog" class="flex-1 overflow-y-auto space-y-3 bg-slate-50 rounded-2xl p-3 border border-slate-100"></div>
-            <div id="chatSuggest" class="flex flex-wrap gap-1.5"></div>
-            <div class="flex gap-2">
-                <textarea id="chatInput" rows="2" placeholder="메시지 입력 (Enter 전송 · Shift+Enter 줄바꿈)"
-                    class="flex-1 bg-white border border-soft-border focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 rounded-xl px-3.5 py-2 text-xs transition outline-none resize-none"></textarea>
-                <button id="btnChatSend" class="px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold disabled:opacity-60"><i class="fa-solid fa-paper-plane"></i></button>
-            </div>
-            <p class="text-[10.5px] text-soft-subtext">마음에 안 드는 답이 나오면, 창을 닫고 아래 수정창에 "○○할 때 △△하게 답해"처럼 적어 다듬어 보세요.</p>
-        </div>
-    </div>
-
     <!-- SAVED TEMPLATES MODAL -->
     <div id="savedModal" class="hidden fixed inset-0 z-50 modal-backdrop flex items-center justify-center p-4">
         <div class="glass-panel bg-white w-full max-w-lg rounded-3xl border border-white/60 shadow-soft-lg p-6 space-y-4">
@@ -748,8 +709,7 @@ const state = {
     rrIndex: 0,
     lastUsedKey: null,
     history: [],                          // 되돌리기용 이전 결과 스냅샷
-    clarify: { answers: [], key: null },  // 생성 전 확인 질문 답변 + 그때의 입력값 지문
-    chat: { msgs: [], prompt: '' }        // 시험 대화
+    clarify: { answers: [], key: null }   // 생성 전 확인 질문 답변 + 그때의 입력값 지문
 };
 
 const $ = (id) => document.getElementById(id);
@@ -1801,69 +1761,6 @@ async function autofill() {
 }
 $('btnAutofill').onclick = autofill;
 
-/* =========================================================
-   시험 대화
-   ========================================================= */
-function renderChat() {
-    const msgs = state.chat.msgs;
-    $('chatLog').innerHTML = msgs.length ? msgs.map(m => `
-        <div class="flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}">
-            <div class="chat-bubble ${m.role === 'user' ? 'chat-user' : m.role === 'error' ? 'chat-error' : 'chat-bot'}">${esc(m.text)}</div>
-        </div>`).join('')
-        : `<div class="h-full flex flex-col items-center justify-center text-center text-[11px] text-soft-subtext gap-1 py-10">
-             <i class="fa-regular fa-comment-dots text-2xl text-emerald-300 mb-1"></i>
-             아래 예시 질문을 누르거나 직접 입력해 보세요.</div>`;
-    $('chatLog').scrollTop = $('chatLog').scrollHeight;
-    const ex = (state.result?.examples || []).map(e => e.input).filter(Boolean).slice(0, 3);
-    $('chatSuggest').innerHTML = msgs.length ? '' : ex.map(t => `<button type="button" class="refine-chip chat-sug" title="${esc(t)}">${esc(t.length > 40 ? t.slice(0, 40) + '…' : t)}</button>`).join('');
-    $('chatSuggest').querySelectorAll('.chat-sug').forEach((b, i) => b.onclick = () => { $('chatInput').value = ex[i]; sendChat(); });
-}
-function openChat() {
-    const prompt = currentText();
-    if (!prompt) { toast('먼저 지침을 생성해 주세요.', true); return; }
-    if (!usableKeys().length) { openSettings(); toast('먼저 AI API 키를 등록해 주세요.', true); return; }
-    if (state.chat.prompt !== prompt) {      // 지침이 바뀌었으면 새 대화로
-        if (state.chat.msgs.length) toast('지침이 바뀌어서 새 대화로 시작해요');
-        state.chat = { msgs: [], prompt };
-    }
-    renderChat();
-    openModal('chatModal');
-    setTimeout(() => $('chatInput').focus(), 50);
-}
-async function sendChat() {
-    const text = $('chatInput').value.trim();
-    if (!text || state.chat.sending) return;
-    const msgs = state.chat.msgs;
-    msgs.push({ role: 'user', text });
-    $('chatInput').value = '';
-    state.chat.sending = true;
-    $('btnChatSend').disabled = true;
-    renderChat();
-    $('chatLog').insertAdjacentHTML('beforeend', '<div id="chatTyping" class="flex"><div class="chat-bubble chat-bot text-soft-subtext"><i class="fa-solid fa-ellipsis fa-fade"></i></div></div>');
-    $('chatLog').scrollTop = $('chatLog').scrollHeight;
-    const past = msgs.slice(0, -1).filter(m => m.role !== 'error');
-    const user = past.length
-        ? `[지금까지의 대화]\n${past.map(m => `${m.role === 'user' ? '사용자' : '어시스턴트'}: ${m.text}`).join('\n\n')}\n\n[사용자의 새 메시지]\n${text}\n\n위 대화를 이어서, 어시스턴트로서 새 메시지에만 답하라.`
-        : text;
-    try {
-        const reply = await callAI({ system: state.chat.prompt, user }, { temperature: 0.7, json: false });
-        msgs.push({ role: 'bot', text: String(reply).trim() });
-    } catch (err) {
-        console.error(err);
-        msgs.push({ role: 'error', text: '응답을 받지 못했어요: ' + friendlyError(err) });
-    } finally {
-        state.chat.sending = false;
-        $('btnChatSend').disabled = false;
-        renderChat();
-        $('chatInput').focus();
-    }
-}
-$('btnChat').onclick = openChat;
-$('btnChatSend').onclick = sendChat;
-$('btnChatClear').onclick = () => { state.chat.msgs = []; renderChat(); $('chatInput').focus(); };
-$('chatInput').addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendChat(); }
-});
 
 /* =========================================================
    복사 / 다운로드 / 저장 / 불러오기
@@ -2321,7 +2218,6 @@ $('btnReset').onclick = () => {
     state.result = null; state.fullEdited = false;
     state.history = []; updateUndo();
     state.clarify = { answers: [], key: null };
-    state.chat = { msgs: [], prompt: '' };
     $('fullText').value = '';
     $('previewBody').innerHTML = INITIAL_PREVIEW;
     $('refineBar').classList.add('hidden');
